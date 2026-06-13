@@ -1,0 +1,22 @@
+# Flutter/Dart
+mobile/.dart_tool/
+mobile/.idea/
+mobile/.pub-cache/
+mobile/.pub/
+mobile/build/
+mobile/ios/.symlinks/
+mobile/ios/Pods/
+mobile/macos/Flutter/ephemeral/
+mobile/macos/Pods/
+*.log
+*.sqlite
+.DS_Store
+
+# .NET
+api/bin/
+api/obj/
+api/Properties/launchSettings.json
+api/appsettings.Development.json
+api/*.user
+api/*.userosscache
+api/*.suo
