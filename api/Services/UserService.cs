@@ -8,7 +8,7 @@ public interface IUserService
 {
     Task<UserDto?> GetUserByIdAsync(int id);
     Task<UserDto> CreateUserAsync(CreateUserDto createUserDto);
-    Task<bool> ValidateCredentialsAsync(string username, string password);
+    Task<User?> AuthenticateAsync(string username, string password);
 }
 
 public class UserService : IUserService
@@ -25,27 +25,37 @@ public class UserService : IUserService
         var user = await _userRepository.GetUserByIdAsync(id);
         if (user == null) return null;
 
-        return new UserDto { Id = user.Id, Username = user.Username };
+        return MapToDto(user);
     }
 
     public async Task<UserDto> CreateUserAsync(CreateUserDto createUserDto)
     {
-        // Simple hash logic for demo purposes (use BCrypt or similar in prod)
         var user = new User
         {
             Username = createUserDto.Username,
-            PasswordHash = createUserDto.Password // Hash this!
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(createUserDto.Password),
+            FullName = createUserDto.FullName,
+            Role = createUserDto.Role
         };
 
         var createdUser = await _userRepository.CreateUserAsync(user);
-        return new UserDto { Id = createdUser.Id, Username = createdUser.Username };
+        return MapToDto(createdUser);
     }
 
-    public async Task<bool> ValidateCredentialsAsync(string username, string password)
+    public async Task<User?> AuthenticateAsync(string username, string password)
     {
         var user = await _userRepository.GetUserByUsernameAsync(username);
-        if (user == null) return false;
+        if (user == null) return null;
 
-        return user.PasswordHash == password; // Verify hash!
+        var isValid = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
+        return isValid ? user : null;
     }
+
+    private static UserDto MapToDto(User user) => new()
+    {
+        Id = user.Id,
+        Username = user.Username,
+        FullName = user.FullName,
+        Role = user.Role.ToString()
+    };
 }
