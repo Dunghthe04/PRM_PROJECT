@@ -18,12 +18,14 @@ Monorepo gồm Mobile App (Flutter) + Backend API (.NET 8). Tài liệu gốc: [
 
 # 🗺️ TIMELINE THỰC HIỆN (theo ngày — phủ 100% SRS)
 
-> **👉 VỊ TRÍ HIỆN TẠI: Đầu NGÀY 2.** Ngày 1 (dựng nền + tạo DB) đã xong.
+> **👉 VỊ TRÍ HIỆN TẠI: Đầu NGÀY 4.** Ngày 1–3 (nền + Auth + Hồ sơ/OTP) đã xong.
 
 Ký hiệu: ✅ xong · 🟡 đang làm · ⬜ chưa làm. "Ngày" = 1 buổi làm tập trung, tự map vào lịch thật.
 Mỗi ngày kết thúc bằng **chạy thử + commit**.
 
 > 📱 **Quyết định kiến trúc (vì đây là môn App Mobile):** KHÔNG làm Web Portal riêng. **Tất cả 5 vai trò dùng chung 1 app Flutter.** Admin & Trưởng bộ môn dùng bản **Flutter Web/Desktop** (`flutter run -d chrome`) với layout rộng — cùng codebase, cùng API. Báo cáo ghi: *"Web Portal hiện thực bằng Flutter Web responsive"*.
+
+> 📱 **Auth:** Đăng ký / đăng nhập bằng **SĐT + mật khẩu**. OTP chỉ gửi về **điện thoại** (xác thực đăng ký + quên MK). Dev: OTP log ra console (`[DEV OTP SMS]`).
 
 > ⚠️ **1 thứ phải bổ sung so với code hiện tại** (chưa có trong model):
 > - **Entity Thời khóa biểu** (`TimetableSlot`: lớp, môn, GV, thứ, tiết, phòng) — cho FR2.3 → thêm ở Ngày 4.
@@ -36,16 +38,16 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 - [x] Monorepo + domain model đầy đủ + 2 migration + JWT/Swagger + luồng User mẫu
 - [x] `appsettings.Development.json` + `dotnet ef database update` → DB `FSchoolDb` (18 bảng)
 
-### 🟡 NGÀY 2 — Bảo mật Auth (FR1.1 + NFR4.3)  ⬅️ LÀM TIẾP
-- [ ] ⚠️ **Hash mật khẩu BCrypt** — [api/Services/UserService.cs](api/Services/UserService.cs) (dòng 37 & 49)
-- [ ] ⚠️ **Nhúng `userId` + `role` vào JWT claims** — [api/Common/JwtHelper.cs](api/Common/JwtHelper.cs) + [api/Controllers/UserController.cs](api/Controllers/UserController.cs)
-- [ ] Áp `[Authorize(Roles=...)]`; test register/login trên Swagger
+### ✅ NGÀY 2 — Bảo mật Auth (FR1.1 + NFR4.3)
+- [x] ⚠️ **Hash mật khẩu BCrypt** — [api/Services/UserService.cs](api/Services/UserService.cs)
+- [x] ⚠️ **Nhúng `userId` + `role` vào JWT claims** — [api/Common/JwtHelper.cs](api/Common/JwtHelper.cs) + [api/Controllers/UserController.cs](api/Controllers/UserController.cs)
+- [x] Áp `[Authorize(Roles=...)]`; test register/login trên Swagger
 
-### NGÀY 3 — Hồ sơ & Khôi phục MK (FR1.2, FR1.3) · *mọi role*
-- [ ] Xem/sửa hồ sơ, đổi mật khẩu, cập nhật avatar (FR1.3)
-- [ ] Quên mật khẩu qua OTP Email/SĐT (FR1.2)
+### ✅ NGÀY 3 — Hồ sơ & Khôi phục MK (FR1.2, FR1.3) · *mọi role*
+- [x] Xem/sửa hồ sơ, đổi mật khẩu, cập nhật avatar (FR1.3) — `/api/account/*`
+- [x] Quên mật khẩu qua OTP Email/SĐT (FR1.2) — `/api/auth/forgot|verify|reset`
 
-### NGÀY 4 — Danh mục + TKB + Phân công (FR5.2, FR5.3, FR2.3) · *Admin/Trưởng bộ môn*
+### NGÀY 4 — Danh mục + TKB + Phân công (FR5.2, FR5.3, FR2.3) · *Admin/Trưởng bộ môn*  ⬅️ LÀM TIẾP
 - [ ] CRUD Khối, Semester, Subject, Class; gán Student vào Class (FR5.2)
 - [ ] Phân công giảng dạy TeacherAssignment (FR5.3)
 - [ ] ➕ **Thêm entity `TimetableSlot` + migration** + API xem TKB theo tuần (FR2.3)
@@ -164,7 +166,8 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 
 ---
 
-## 👉 HÔM NAY LÀM GÌ (Ngày 2)
-1. Cài `BCrypt.Net-Next`, sửa [UserService.cs](api/Services/UserService.cs) để hash + verify mật khẩu.
-2. Sửa [JwtHelper.cs](api/Common/JwtHelper.cs) nhét `userId` + `role` vào claims; áp `[Authorize]`.
-3. Chạy `dotnet run` → test Swagger → commit.
+## 👉 HÔM NAY LÀM GÌ (Ngày 4)
+1. CRUD Khối, Semester, Subject, Class; gán Student vào Class (FR5.2).
+2. Phân công giảng dạy TeacherAssignment (FR5.3).
+3. ➕ Thêm entity `TimetableSlot` + migration + API xem TKB theo tuần (FR2.3).
+4. Chạy `dotnet run` → test Swagger → commit.

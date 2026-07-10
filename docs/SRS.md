@@ -36,9 +36,9 @@ Hệ thống FSchool phân quyền truy cập dựa trên 5 vai trò (Role-Based
 Hệ thống được chia thành 6 phân hệ nghiệp vụ chính:
 
 ### Phân hệ 1: Xác thực, Cấu hình & Thông báo chung (Common - Mobile)
-*   **FR1.1 - Đăng nhập:** Đăng nhập bằng ID (Mã HS/GV) và Mật khẩu do nhà trường cấp phát.
-*   **FR1.2 - Phục hồi mật khẩu:** Yêu cầu cấp lại mật khẩu thông qua mã xác thực (OTP) gửi về Email hoặc Số điện thoại.
-*   **FR1.3 - Quản lý hồ sơ:** Xem thông tin cá nhân, cập nhật Avatar và thay đổi mật khẩu định kỳ.
+*   **FR1.1 - Đăng nhập:** Đăng nhập bằng **Số điện thoại** và Mật khẩu. Tài khoản mới phải xác thực OTP SĐT trước khi đăng nhập.
+*   **FR1.2 - Phục hồi mật khẩu:** Yêu cầu cấp lại mật khẩu thông qua mã xác thực (OTP) gửi về **Số điện thoại**.
+*   **FR1.3 - Quản lý hồ sơ:** Xem thông tin cá nhân, cập nhật Avatar và thay đổi mật khẩu định kỳ. Số điện thoại là định danh login (không tự đổi qua hồ sơ).
 *   **FR1.4 - Trung tâm Thông báo (Notification Center):** Nơi lưu trữ tất cả thông báo In-app và Push notification. Các luồng thông báo tự động bao gồm:
     *   Có điểm mới, có bài tập mới/sắp đến hạn nộp.
     *   Đơn xin nghỉ học được duyệt/từ chối.

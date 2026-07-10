@@ -4,7 +4,7 @@ Bản thiết kế API suy ra từ [SRS.md](SRS.md) + domain model hiện có. C
 
 - **Tổng số:** ~118 endpoint, chia 19 nhóm (controller).
 - **Quy ước:** prefix `/api`. Bảo vệ bằng JWT; cột **Role** ghi vai trò được phép (— = mọi user đã đăng nhập, *Public* = không cần token).
-- **Trạng thái:** ✅ đã có · ⬜ chưa làm. (Hiện chỉ mới có 3 endpoint User.)
+- **Trạng thái:** ✅ đã có · ⬜ chưa làm. (Ngày 1–3: Auth BCrypt/JWT + Account/OTP đã có.)
 
 | Nhóm | Số endpoint |
 |---|---|
@@ -32,17 +32,21 @@ Bản thiết kế API suy ra từ [SRS.md](SRS.md) + domain model hiện có. C
 ---
 
 ## 1. Auth & Account — FR1.1, FR1.2, FR1.3 · Ngày 2–3
+> **Quyết định sản phẩm:** Đăng ký / đăng nhập bằng **SĐT + mật khẩu**. OTP chỉ gửi về **điện thoại** (xác thực đăng ký + quên MK).
+
 | # | Method | Endpoint | Role | Mô tả |
 |---|---|---|---|---|
-| 1 | POST | `/api/auth/login` | *Public* | Đăng nhập bằng ID + mật khẩu, trả JWT ✅ |
-| 2 | POST | `/api/auth/refresh` | *Public* | Làm mới access token |
-| 3 | POST | `/api/auth/forgot-password` | *Public* | Gửi OTP về Email/SĐT |
-| 4 | POST | `/api/auth/verify-otp` | *Public* | Xác thực mã OTP |
-| 5 | POST | `/api/auth/reset-password` | *Public* | Đặt lại mật khẩu sau OTP |
-| 6 | GET | `/api/account/me` | — | Lấy hồ sơ người dùng hiện tại |
-| 7 | PUT | `/api/account/me` | — | Cập nhật thông tin cá nhân |
-| 8 | PUT | `/api/account/avatar` | — | Đổi ảnh đại diện |
-| 9 | PUT | `/api/account/change-password` | — | Đổi mật khẩu |
+| 1 | POST | `/api/user/login` | *Public* | Đăng nhập SĐT + mật khẩu, trả JWT ✅ |
+| 2 | POST | `/api/user/register` | *Public* | Đăng ký bằng SĐT + gửi OTP xác thực ✅ |
+| 3 | POST | `/api/auth/verify-phone` | *Public* | Xác thực OTP đăng ký ✅ |
+| 4 | POST | `/api/auth/resend-otp` | *Public* | Gửi lại OTP (Register / ResetPassword) ✅ |
+| 5 | POST | `/api/auth/forgot-password` | *Public* | Gửi OTP quên MK về SĐT ✅ |
+| 6 | POST | `/api/auth/verify-otp` | *Public* | Xác thực OTP quên MK → resetToken ✅ |
+| 7 | POST | `/api/auth/reset-password` | *Public* | Đặt lại mật khẩu sau OTP ✅ |
+| 8 | GET | `/api/account/me` | — | Lấy hồ sơ người dùng hiện tại ✅ |
+| 9 | PUT | `/api/account/me` | — | Cập nhật FullName / Email (không đổi Phone) ✅ |
+| 10 | PUT | `/api/account/avatar` | — | Đổi ảnh đại diện ✅ (+ `POST /avatar/upload`) |
+| 11 | PUT | `/api/account/change-password` | — | Đổi mật khẩu ✅ |
 
 ## 2. Users — FR5.1 · Ngày 5 · Role: **Admin**
 | # | Method | Endpoint | Mô tả |

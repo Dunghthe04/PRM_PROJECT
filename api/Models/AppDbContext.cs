@@ -8,6 +8,7 @@ public class AppDbContext : DbContext
 
     public DbSet<User> Users { get; set; }
     public DbSet<StudentParent> StudentParents { get; set; }
+    public DbSet<PasswordResetOtp> PasswordResetOtps { get; set; }
     
     public DbSet<Semester> Semesters { get; set; }
     public DbSet<Subject> Subjects { get; set; }
@@ -94,5 +95,31 @@ public class AppDbContext : DbContext
             .HasOne(a => a.CreatedBy)
             .WithMany()
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Email unique khi có giá trị; Phone bắt buộc + unique (định danh login)
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Email)
+            .IsUnique()
+            .HasFilter("[Email] IS NOT NULL");
+
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Phone)
+            .IsUnique();
+
+        modelBuilder.Entity<User>()
+            .Property(u => u.Phone)
+            .IsRequired();
+
+        modelBuilder.Entity<PasswordResetOtp>()
+            .HasOne(o => o.User)
+            .WithMany()
+            .HasForeignKey(o => o.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PasswordResetOtp>()
+            .HasIndex(o => o.ResetToken);
+
+        modelBuilder.Entity<PasswordResetOtp>()
+            .HasIndex(o => new { o.UserId, o.Purpose, o.IsUsed });
     }
 }

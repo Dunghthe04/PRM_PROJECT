@@ -70,7 +70,14 @@ if (jwtSettings != null && !string.IsNullOrEmpty(jwtSettings.Key))
 }
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IPasswordResetOtpRepository, PasswordResetOtpRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IOtpDeliveryService, ConsoleOtpDeliveryService>();
+
+// wwwroot phải tồn tại trước Build để StaticFiles phục vụ /avatars
+Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "avatars"));
 
 var app = builder.Build();
 
@@ -81,6 +88,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();

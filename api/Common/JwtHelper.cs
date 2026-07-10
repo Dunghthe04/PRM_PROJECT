@@ -5,8 +5,16 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Api.Common;
 
+/// <summary>Helper tạo JWT access token cho phiên đăng nhập.</summary>
 public static class JwtHelper
 {
+    /// <summary>
+    /// Sinh JWT chứa userId, phone (Name), role — dùng cho [Authorize] / RBAC.
+    /// </summary>
+    /// <param name="userId">Id user → ClaimTypes.NameIdentifier</param>
+    /// <param name="username">Thường là Phone → ClaimTypes.Name</param>
+    /// <param name="role">Tên role (Admin, Student, ...) → ClaimTypes.Role</param>
+    /// <param name="jwtSettings">Key / Issuer / Audience / Expiry từ appsettings</param>
     public static string GenerateToken(int userId, string username, string role, JwtSettings jwtSettings)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
