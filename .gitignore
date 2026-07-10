@@ -12,11 +12,18 @@ mobile/macos/Pods/
 *.sqlite
 .DS_Store
 
-# .NET
+# .NET / Visual Studio
 api/bin/
 api/obj/
+api/.vs/
+**/.vs/
 api/Properties/launchSettings.json
 api/appsettings.Development.json
-api/*.user
-api/*.userosscache
-api/*.suo
+*.user
+*.userosscache
+*.suo
+*.db
+*.db-shm
+*.db-wal
+*.vsidx
+*.dtbcache.v2
