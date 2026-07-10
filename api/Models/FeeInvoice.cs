@@ -1,12 +1,5 @@
 namespace Api.Models;
 
-public class FeeCategory
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty; // e.g. "Học phí", "BHYT"
-    public decimal DefaultAmount { get; set; }
-}
-
 public class FeeInvoice
 {
     public int Id { get; set; }
@@ -18,9 +11,9 @@ public class FeeInvoice
 
     public decimal Amount { get; set; }
     public DateTime DueDate { get; set; }
-    
+
     public bool IsPaid { get; set; }
     public DateTime? PaidAt { get; set; }
-    public string? PaymentMethod { get; set; } // "VNPay", "PayOS"
+    public string? PaymentMethod { get; set; }
     public string? TransactionId { get; set; }
 }

@@ -13,12 +13,3 @@ public class User
     public ICollection<StudentParent> ParentLinks { get; set; } = new List<StudentParent>();
     public ICollection<StudentParent> ChildLinks { get; set; } = new List<StudentParent>();
 }
-
-public class StudentParent
-{
-    public int ParentId { get; set; }
-    public User Parent { get; set; } = null!;
-
-    public int StudentId { get; set; }
-    public User Student { get; set; } = null!;
-}
