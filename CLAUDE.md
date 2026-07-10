@@ -18,7 +18,7 @@ Monorepo gồm Mobile App (Flutter) + Backend API (.NET 8). Tài liệu gốc: [
 
 # 🗺️ TIMELINE THỰC HIỆN (theo ngày — phủ 100% SRS)
 
-> **👉 VỊ TRÍ HIỆN TẠI: Đầu NGÀY 4.** Ngày 1–3 (nền + Auth + Hồ sơ/OTP) đã xong.
+> **👉 VỊ TRÍ HIỆN TẠI: Đầu NGÀY 5.** Ngày 1–4 (Auth + Hồ sơ/OTP + Danh mục/TKB) đã xong.
 
 Ký hiệu: ✅ xong · 🟡 đang làm · ⬜ chưa làm. "Ngày" = 1 buổi làm tập trung, tự map vào lịch thật.
 Mỗi ngày kết thúc bằng **chạy thử + commit**.
@@ -47,12 +47,12 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 - [x] Xem/sửa hồ sơ, đổi mật khẩu, cập nhật avatar (FR1.3) — `/api/account/*`
 - [x] Quên mật khẩu qua OTP Email/SĐT (FR1.2) — `/api/auth/forgot|verify|reset`
 
-### NGÀY 4 — Danh mục + TKB + Phân công (FR5.2, FR5.3, FR2.3) · *Admin/Trưởng bộ môn*  ⬅️ LÀM TIẾP
-- [ ] CRUD Khối, Semester, Subject, Class; gán Student vào Class (FR5.2)
-- [ ] Phân công giảng dạy TeacherAssignment (FR5.3)
-- [ ] ➕ **Thêm entity `TimetableSlot` + migration** + API xem TKB theo tuần (FR2.3)
+### ✅ NGÀY 4 — Danh mục + TKB + Phân công (FR5.2, FR5.3, FR2.3) · *Admin/Trưởng bộ môn*
+- [x] CRUD Khối, Semester, Subject, Class; gán Student vào Class (FR5.2)
+- [x] Phân công giảng dạy TeacherAssignment (FR5.3)
+- [x] ➕ **Thêm entity `TimetableSlot` + migration** + API xem TKB theo tuần (FR2.3)
 
-### NGÀY 5 — Quản lý người dùng (FR5.1) · *Admin*
+### NGÀY 5 — Quản lý người dùng (FR5.1) · *Admin*  ⬅️ LÀM TIẾP
 - [ ] CRUD user, Khóa/Mở tài khoản, Reset mật khẩu
 - [ ] Import tài khoản hàng loạt từ file Excel
 
@@ -166,8 +166,7 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 
 ---
 
-## 👉 HÔM NAY LÀM GÌ (Ngày 4)
-1. CRUD Khối, Semester, Subject, Class; gán Student vào Class (FR5.2).
-2. Phân công giảng dạy TeacherAssignment (FR5.3).
-3. ➕ Thêm entity `TimetableSlot` + migration + API xem TKB theo tuần (FR2.3).
-4. Chạy `dotnet run` → test Swagger → commit.
+## 👉 HÔM NAY LÀM GÌ (Ngày 5)
+1. CRUD user, Khóa/Mở tài khoản, Reset mật khẩu (FR5.1).
+2. Import tài khoản hàng loạt từ file Excel.
+3. Chạy `dotnet run` → test Swagger → commit.

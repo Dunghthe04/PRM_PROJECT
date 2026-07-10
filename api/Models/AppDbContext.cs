@@ -15,6 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<Class> Classes { get; set; }
     public DbSet<ClassStudent> ClassStudents { get; set; }
     public DbSet<TeacherAssignment> TeacherAssignments { get; set; }
+    public DbSet<TimetableSlot> TimetableSlots { get; set; }
 
     public DbSet<Attendance> Attendances { get; set; }
     public DbSet<Assignment> Assignments { get; set; }
@@ -121,5 +122,28 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<PasswordResetOtp>()
             .HasIndex(o => new { o.UserId, o.Purpose, o.IsUsed });
+
+        // TimetableSlot: 1 lớp không trùng tiết trong cùng thứ
+        modelBuilder.Entity<TimetableSlot>()
+            .HasIndex(t => new { t.ClassId, t.DayOfWeek, t.Period })
+            .IsUnique();
+
+        modelBuilder.Entity<TimetableSlot>()
+            .HasOne(t => t.Class)
+            .WithMany()
+            .HasForeignKey(t => t.ClassId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<TimetableSlot>()
+            .HasOne(t => t.Subject)
+            .WithMany()
+            .HasForeignKey(t => t.SubjectId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<TimetableSlot>()
+            .HasOne(t => t.Teacher)
+            .WithMany()
+            .HasForeignKey(t => t.TeacherId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
