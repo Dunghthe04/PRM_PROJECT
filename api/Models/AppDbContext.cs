@@ -109,6 +109,34 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Grade>()
             .HasIndex(g => new { g.StudentId, g.ClassId, g.SubjectId, g.SemesterId, g.AssessmentType })
             .IsUnique();
+
+        // Điểm danh: mỗi HS chỉ 1 bản ghi / lớp / ngày
+        modelBuilder.Entity<Attendance>()
+            .HasIndex(a => new { a.ClassId, a.StudentId, a.Date })
+            .IsUnique();
+
+        modelBuilder.Entity<Attendance>()
+            .HasOne(a => a.Class)
+            .WithMany()
+            .HasForeignKey(a => a.ClassId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Attendance>()
+            .HasOne(a => a.Student)
+            .WithMany()
+            .HasForeignKey(a => a.StudentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Attendance>()
+            .HasOne(a => a.RecordedByTeacher)
+            .WithMany()
+            .HasForeignKey(a => a.RecordedByTeacherId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Attendance>()
+            .HasIndex(a => a.ClientRecordId)
+            .IsUnique()
+            .HasFilter("[ClientRecordId] IS NOT NULL");
             
         modelBuilder.Entity<LeaveRequest>()
             .HasOne(lr => lr.Student)
