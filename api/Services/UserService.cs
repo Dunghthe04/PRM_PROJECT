@@ -85,6 +85,10 @@ public class UserService : IUserService
         if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
             return (null, null);
 
+        // FR5.1 — chặn đăng nhập nếu Admin đã khóa tài khoản
+        if (user.IsLocked)
+            return (null, "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.");
+
         if (!user.IsPhoneVerified)
             return (null, "Số điện thoại chưa được xác thực. Vui lòng nhập OTP.");
 
@@ -100,6 +104,7 @@ public class UserService : IUserService
         AvatarUrl = user.AvatarUrl,
         Email = user.Email,
         IsPhoneVerified = user.IsPhoneVerified,
+        IsLocked = user.IsLocked,
         Role = user.Role.ToString()
     };
 }

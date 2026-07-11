@@ -91,10 +91,18 @@ Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "www
 
 var app = builder.Build();
 
+// Swagger chỉ bật ở Development — cần ASPNETCORE_ENVIRONMENT=Development (xem launchSettings.json)
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "FSchool API v1");
+        options.RoutePrefix = "swagger";
+    });
+
+    // Truy cập https://localhost:xxxx/ → tự chuyển sang Swagger UI
+    app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 }
 
 app.UseHttpsRedirection();

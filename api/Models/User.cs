@@ -27,6 +27,13 @@ public class User
     /// <summary>True sau khi xác thực OTP đăng ký thành công.</summary>
     public bool IsPhoneVerified { get; set; }
 
+    /// <summary>
+    /// True = tài khoản bị Admin khóa (FR5.1).
+    /// User bị khóa không được đăng nhập dù đúng SĐT + mật khẩu.
+    /// Mặc định false — tài khoản mới luôn được phép hoạt động.
+    /// </summary>
+    public bool IsLocked { get; set; }
+
     public UserRole Role { get; set; }
 
     // Parent ↔ Student (nhiều-nhiều) phục vụ Switch Profile (FR2.1)

@@ -13,6 +13,10 @@ public class UserDto
     public string AvatarUrl { get; set; } = string.Empty;
     public string? Email { get; set; }
     public bool IsPhoneVerified { get; set; }
+
+    /// <summary>True nếu Admin đã khóa tài khoản — hiển thị trên danh sách quản lý user.</summary>
+    public bool IsLocked { get; set; }
+
     public string Role { get; set; } = string.Empty;
 }
 
