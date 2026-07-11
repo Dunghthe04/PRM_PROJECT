@@ -86,6 +86,29 @@ public class AppDbContext : DbContext
             .HasOne(g => g.Student)
             .WithMany()
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Grade>()
+            .HasOne(g => g.Class)
+            .WithMany()
+            .HasForeignKey(g => g.ClassId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Grade>()
+            .HasOne(g => g.CreatedByTeacher)
+            .WithMany()
+            .HasForeignKey(g => g.CreatedByTeacherId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Grade>()
+            .HasOne(g => g.ApprovedBy)
+            .WithMany()
+            .HasForeignKey(g => g.ApprovedById)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Mỗi HS chỉ có 1 điểm / đầu điểm / môn / kỳ / lớp
+        modelBuilder.Entity<Grade>()
+            .HasIndex(g => new { g.StudentId, g.ClassId, g.SubjectId, g.SemesterId, g.AssessmentType })
+            .IsUnique();
             
         modelBuilder.Entity<LeaveRequest>()
             .HasOne(lr => lr.Student)
