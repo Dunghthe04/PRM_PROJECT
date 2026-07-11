@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Api.Common;
 using Api.DTOs;
 using Api.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -122,6 +123,43 @@ public class UsersController : ControllerBase
             return BadRequest(new { message });
         }
         return Ok(new MessageResponseDto { Message = message });
+    }
+
+    /// <summary>
+    /// GET /api/users/import/template — tải file Excel mẫu.
+    /// Admin điền theo cột Phone, FullName, Password, Role, Email rồi upload.
+    /// </summary>
+    [HttpGet("import/template")]
+    public IActionResult DownloadImportTemplate()
+    {
+        var bytes = _service.GenerateImportTemplate();
+        return File(
+            bytes,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            UserExcelHelper.TemplateFileName);
+    }
+
+    /// <summary>
+    /// POST /api/users/import — upload file .xlsx import hàng loạt.
+    /// Swagger: chọn multipart/form-data, field "file".
+    /// </summary>
+    [HttpPost("import")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> ImportUsers(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "Vui lòng chọn file Excel." });
+
+        if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { message = "Chỉ hỗ trợ file .xlsx." });
+
+        await using var stream = file.OpenReadStream();
+        var (result, error) = await _service.ImportFromExcelAsync(stream);
+
+        if (error != null)
+            return BadRequest(new { message = error });
+
+        return Ok(result);
     }
 
     /// <summary>
