@@ -18,7 +18,7 @@ Monorepo gồm Mobile App (Flutter) + Backend API (.NET 8). Tài liệu gốc: [
 
 # 🗺️ TIMELINE THỰC HIỆN (theo ngày — phủ 100% SRS)
 
-> **👉 VỊ TRÍ HIỆN TẠI: Đầu NGÀY 5.** Ngày 1–4 (Auth + Hồ sơ/OTP + Danh mục/TKB) đã xong.
+> **👉 VỊ TRÍ HIỆN TẠI: Đầu NGÀY 9.** Ngày 1–8 (Auth → Danh mục/TKB → User Admin → Điểm → Điểm danh → Bài tập) đã xong.
 
 Ký hiệu: ✅ xong · 🟡 đang làm · ⬜ chưa làm. "Ngày" = 1 buổi làm tập trung, tự map vào lịch thật.
 Mỗi ngày kết thúc bằng **chạy thử + commit**.
@@ -52,23 +52,23 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 - [x] Phân công giảng dạy TeacherAssignment (FR5.3)
 - [x] ➕ **Thêm entity `TimetableSlot` + migration** + API xem TKB theo tuần (FR2.3)
 
-### NGÀY 5 — Quản lý người dùng (FR5.1) · *Admin*  ⬅️ LÀM TIẾP
-- [ ] CRUD user, Khóa/Mở tài khoản, Reset mật khẩu
-- [ ] Import tài khoản hàng loạt từ file Excel
+### ✅ NGÀY 5 — Quản lý người dùng (FR5.1) · *Admin*
+- [x] CRUD user, Khóa/Mở tài khoản, Reset mật khẩu
+- [x] Import tài khoản hàng loạt từ file Excel
 
-### NGÀY 6 — Điểm số (FR3.2, FR2.3) · *GV / HS / PH / Trưởng bộ môn*
-- [ ] Nhập điểm hàng loạt theo AssessmentType, cơ chế **Nháp → Publish**
-- [ ] (tuỳ chọn) Trưởng bộ môn duyệt điểm; API xem bảng điểm cho HS/PH
+### ✅ NGÀY 6 — Điểm số (FR3.2, FR2.3) · *GV / HS / PH / Trưởng bộ môn*
+- [x] Nhập điểm hàng loạt theo AssessmentType, cơ chế **Nháp → Publish**
+- [x] (tuỳ chọn) Trưởng bộ môn duyệt điểm; API xem bảng điểm cho HS/PH
 
-### NGÀY 7 — Điểm danh (FR3.1) · *GV / HS / PH*
-- [ ] API điểm danh P/A/L theo lớp + ngày; API tra cứu chuyên cần
-- [ ] (chuẩn bị endpoint đồng bộ batch để mobile dùng offline ở Ngày 17)
+### ✅ NGÀY 7 — Điểm danh (FR3.1) · *GV / HS / PH*
+- [x] API điểm danh P/A/L theo lớp + ngày; API tra cứu chuyên cần
+- [x] (chuẩn bị endpoint đồng bộ batch để mobile dùng offline ở Ngày 17)
 
-### NGÀY 8 — Bài tập (FR3.5, FR2.4) · *GV / HS*
-- [ ] CRUD Assignment (deadline, đề bài) + Submission + chấm điểm/feedback
-- [ ] API trạng thái nộp bài (To-Do / Done / Overdue)
+### ✅ NGÀY 8 — Bài tập (FR3.5, FR2.4) · *GV / HS*
+- [x] CRUD Assignment (deadline, đề bài) + Submission + chấm điểm/feedback
+- [x] API trạng thái nộp bài (To-Do / Done / Overdue)
 
-### NGÀY 9 — Đơn xin nghỉ (FR2.5, FR3.3) · *PH / HS / GV*
+### NGÀY 9 — Đơn xin nghỉ (FR2.5, FR3.3) · *PH / HS / GV*  ⬅️ LÀM TIẾP
 - [ ] Tạo đơn (đính kèm ảnh y tế) + theo dõi trạng thái
 - [ ] GV Approve/Reject → tự bắn thông báo kết quả
 
@@ -166,7 +166,7 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 
 ---
 
-## 👉 HÔM NAY LÀM GÌ (Ngày 5)
-1. CRUD user, Khóa/Mở tài khoản, Reset mật khẩu (FR5.1).
-2. Import tài khoản hàng loạt từ file Excel.
+## 👉 HÔM NAY LÀM GÌ (Ngày 9)
+1. Tạo đơn xin nghỉ (đính kèm ảnh y tế) + theo dõi trạng thái (FR2.5).
+2. GV Approve/Reject → chuẩn bị hook thông báo (FR3.3).
 3. Chạy `dotnet run` → test Swagger → commit.

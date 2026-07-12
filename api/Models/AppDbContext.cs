@@ -77,9 +77,38 @@ public class AppDbContext : DbContext
             .WithMany()
             .OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<Assignment>()
+            .HasOne(a => a.Class)
+            .WithMany()
+            .HasForeignKey(a => a.ClassId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Assignment>()
+            .HasOne(a => a.Subject)
+            .WithMany()
+            .HasForeignKey(a => a.SubjectId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // 1 HS chỉ 1 bài nộp / 1 assignment — nộp lại = Update
+        modelBuilder.Entity<Submission>()
+            .HasIndex(s => new { s.AssignmentId, s.StudentId })
+            .IsUnique();
+
+        modelBuilder.Entity<Submission>()
+            .HasOne(s => s.Assignment)
+            .WithMany(a => a.Submissions)
+            .HasForeignKey(s => s.AssignmentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         modelBuilder.Entity<Submission>()
             .HasOne(s => s.Student)
             .WithMany()
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Submission>()
+            .HasOne(s => s.GradedByTeacher)
+            .WithMany()
+            .HasForeignKey(s => s.GradedByTeacherId)
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Grade>()

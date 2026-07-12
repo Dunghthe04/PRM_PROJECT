@@ -78,6 +78,8 @@ builder.Services.AddScoped<ITeacherAssignmentRepository, TeacherAssignmentReposi
 builder.Services.AddScoped<ITimetableRepository, TimetableRepository>();
 builder.Services.AddScoped<IGradeRepository, GradeRepository>();
 builder.Services.AddScoped<IAttendanceRepository, AttendanceRepository>();
+builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();
+builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
@@ -90,6 +92,7 @@ builder.Services.AddScoped<ITeacherAssignmentService, TeacherAssignmentService>(
 builder.Services.AddScoped<ITimetableService, TimetableService>();
 builder.Services.AddScoped<IGradeService, GradeService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
+builder.Services.AddScoped<IAssignmentService, AssignmentService>();
 
 // wwwroot phải tồn tại trước Build để StaticFiles phục vụ /avatars
 Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "avatars"));
