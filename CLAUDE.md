@@ -18,7 +18,7 @@ Monorepo gồm Mobile App (Flutter) + Backend API (.NET 8). Tài liệu gốc: [
 
 # 🗺️ TIMELINE THỰC HIỆN (theo ngày — phủ 100% SRS)
 
-> **👉 VỊ TRÍ HIỆN TẠI: Đầu NGÀY 11 (Bước 1 đang làm).** Ngày 1–10 đã xong theo git.
+> **👉 VỊ TRÍ HIỆN TẠI: Cuối NGÀY 11 (xong).** Tiếp theo Ngày 12 — Báo cáo & Thống kê.
 
 Ký hiệu: ✅ xong · 🟡 đang làm · ⬜ chưa làm. "Ngày" = 1 buổi làm tập trung, tự map vào lịch thật.
 Mỗi ngày kết thúc bằng **chạy thử + commit**.
@@ -76,12 +76,12 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 - [x] Notification (in-app) + Announcement (lớp / toàn trường)
 - [x] Hạ tầng **Push Notification (FCM)** + auto-notify các sự kiện (điểm mới, đơn duyệt, nhắc học phí…)
 
-### 🟡 NGÀY 11 — Tài chính & Cổng thanh toán (FR4.1, FR4.2, FR2.6) · *Admin / PH*  ⬅️ LÀM TIẾP
-- [ ] Quản lý Khoản thu/Hóa đơn (FeeCategory, FeeInvoice) + sửa precision `decimal(18,2)`
-- [ ] Tích hợp **VNPay** + **PayOS** (tạo giao dịch + verify checksum/signature)
-- [ ] Webhook đối soát giao dịch + biên lai điện tử (NFR: không lưu thông tin thẻ)
+### ✅ NGÀY 11 — Tài chính & Cổng thanh toán (FR4.1, FR4.2, FR2.6) · *Admin / PH*
+- [x] Quản lý Khoản thu/Hóa đơn (FeeCategory, FeeInvoice) + sửa precision `decimal(18,2)`
+- [x] Tích hợp **VNPay** + **PayOS** (tạo giao dịch + verify checksum/signature)
+- [x] Webhook đối soát giao dịch + biên lai điện tử (NFR: không lưu thông tin thẻ)
 
-### NGÀY 12 — Báo cáo & Thống kê (FR5.5) · *Admin / Trưởng bộ môn*
+### 🟡 NGÀY 12 — Báo cáo & Thống kê (FR5.5) · *Admin / Trưởng bộ môn*  ⬅️ LÀM TIẾP
 - [ ] API tổng hợp: bảng điểm, tỷ lệ chuyên cần, tình trạng học phí
 - [ ] Xuất **Excel / PDF**
 
@@ -166,7 +166,7 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 
 ---
 
-## 👉 HÔM NAY LÀM GÌ (Ngày 9)
-1. Tạo đơn xin nghỉ (đính kèm ảnh y tế) + theo dõi trạng thái (FR2.5).
-2. GV Approve/Reject → chuẩn bị hook thông báo (FR3.3).
-3. Chạy `dotnet run` → test Swagger → commit.
+## 👉 HÔM NAY LÀM GÌ (Ngày 12)
+1. API báo cáo: bảng điểm, chuyên cần, học phí (Admin / Trưởng bộ môn).
+2. Xuất Excel / PDF.
+3. Chạy thử Swagger → commit.
