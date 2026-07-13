@@ -38,17 +38,20 @@ public class LeaveRequestService : ILeaveRequestService
     private readonly ILeaveRequestRepository _leaveRequestRepository;
     private readonly IClassRepository _classRepository;
     private readonly ITeacherAssignmentRepository _teacherAssignmentRepository;
+    private readonly INotificationService _notificationService;
     private readonly AppDbContext _context;
 
     public LeaveRequestService(
         ILeaveRequestRepository leaveRequestRepository,
         IClassRepository classRepository,
         ITeacherAssignmentRepository teacherAssignmentRepository,
+        INotificationService notificationService,
         AppDbContext context)
     {
         _leaveRequestRepository = leaveRequestRepository;
         _classRepository = classRepository;
         _teacherAssignmentRepository = teacherAssignmentRepository;
+        _notificationService = notificationService;
         _context = context;
     }
 
@@ -306,9 +309,7 @@ public class LeaveRequestService : ILeaveRequestService
         return await VerifyTeacherCanReviewAsync(teacherId, role, entity.ClassId);
     }
 
-    /// <summary>
-    /// Ghi thông báo in-app cho HS + PH (FCM push sẽ bổ sung ở Ngày 10).
-    /// </summary>
+    /// <summary>Ghi thông báo in-app + push FCM cho HS + PH.</summary>
     private async Task NotifyLeaveResultAsync(LeaveRequest entity, bool approved)
     {
         var className = entity.Class?.Name ?? "lớp học";
@@ -320,30 +321,16 @@ public class LeaveRequestService : ILeaveRequestService
             : $"Đơn xin nghỉ ngày {dateText} ({className}) đã bị từ chối."
                 + (string.IsNullOrEmpty(entity.RejectionReason) ? "" : $" Lý do: {entity.RejectionReason}");
 
-        var recipientIds = new HashSet<int> { entity.StudentId };
+        var recipientIds = new List<int> { entity.StudentId };
 
         var parentIds = await _context.StudentParents
             .Where(sp => sp.StudentId == entity.StudentId)
             .Select(sp => sp.ParentId)
             .ToListAsync();
 
-        foreach (var pid in parentIds)
-            recipientIds.Add(pid);
+        recipientIds.AddRange(parentIds);
 
-        var now = DateTime.UtcNow;
-        foreach (var userId in recipientIds)
-        {
-            _context.Notifications.Add(new Notification
-            {
-                UserId = userId,
-                Title = title,
-                Message = message,
-                IsRead = false,
-                CreatedAt = now
-            });
-        }
-
-        await _context.SaveChangesAsync();
+        await _notificationService.NotifyUsersAsync(recipientIds, title, message, sendPush: true);
     }
 
     internal static LeaveRequestDto MapToDto(LeaveRequest lr) => new()

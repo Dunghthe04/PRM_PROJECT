@@ -25,6 +25,7 @@ public class AppDbContext : DbContext
     public DbSet<LeaveRequest> LeaveRequests { get; set; }
     public DbSet<Announcement> Announcements { get; set; }
     public DbSet<Notification> Notifications { get; set; }
+    public DbSet<UserDevice> UserDevices { get; set; }
 
     public DbSet<FeeCategory> FeeCategories { get; set; }
     public DbSet<FeeInvoice> FeeInvoices { get; set; }
@@ -193,6 +194,31 @@ public class AppDbContext : DbContext
             .HasOne(a => a.CreatedBy)
             .WithMany()
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Announcement>()
+            .HasOne(a => a.TargetClass)
+            .WithMany()
+            .HasForeignKey(a => a.TargetClassId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Notification>()
+            .HasOne(n => n.User)
+            .WithMany()
+            .HasForeignKey(n => n.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Notification>()
+            .HasIndex(n => new { n.UserId, n.IsRead, n.CreatedAt });
+
+        modelBuilder.Entity<UserDevice>()
+            .HasIndex(d => d.FcmToken)
+            .IsUnique();
+
+        modelBuilder.Entity<UserDevice>()
+            .HasOne(d => d.User)
+            .WithMany()
+            .HasForeignKey(d => d.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // Email unique khi có giá trị; Phone bắt buộc + unique (định danh login)
         modelBuilder.Entity<User>()

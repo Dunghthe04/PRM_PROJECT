@@ -48,6 +48,7 @@ public class GradeService : IGradeService
     private readonly ISemesterRepository _semesterRepository;
     private readonly ISubjectRepository _subjectRepository;
     private readonly ITeacherAssignmentRepository _teacherAssignmentRepository;
+    private readonly INotificationService _notificationService;
     private readonly AppDbContext _context;
 
     public GradeService(
@@ -56,6 +57,7 @@ public class GradeService : IGradeService
         ISemesterRepository semesterRepository,
         ISubjectRepository subjectRepository,
         ITeacherAssignmentRepository teacherAssignmentRepository,
+        INotificationService notificationService,
         AppDbContext context)
     {
         _gradeRepository = gradeRepository;
@@ -63,6 +65,7 @@ public class GradeService : IGradeService
         _semesterRepository = semesterRepository;
         _subjectRepository = subjectRepository;
         _teacherAssignmentRepository = teacherAssignmentRepository;
+        _notificationService = notificationService;
         _context = context;
     }
 
@@ -271,7 +274,24 @@ public class GradeService : IGradeService
             await _gradeRepository.UpdateAsync(grade);
         }
 
-        // TODO Ngày 10: bắn Notification cho HS/PH khi có điểm mới
+        var subject = await _subjectRepository.GetByIdAsync(dto.SubjectId);
+        var subjectName = subject?.Name ?? "môn học";
+
+        var studentIds = drafts.Select(g => g.StudentId).Distinct().ToList();
+        var recipientIds = new HashSet<int>(studentIds);
+
+        var parentIds = await _context.StudentParents
+            .Where(sp => studentIds.Contains(sp.StudentId))
+            .Select(sp => sp.ParentId)
+            .ToListAsync();
+        foreach (var pid in parentIds) recipientIds.Add(pid);
+
+        await _notificationService.NotifyUsersAsync(
+            recipientIds.ToList(),
+            "Điểm mới đã được công bố",
+            $"Giáo viên vừa công bố điểm {assessmentType} môn {subjectName} ({drafts.Count} bản ghi).",
+            sendPush: true);
+
         return (new PublishGradesResultDto
         {
             Message = $"Đã công bố {drafts.Count} bản ghi điểm.",
