@@ -18,7 +18,7 @@ Monorepo gồm Mobile App (Flutter) + Backend API (.NET 8). Tài liệu gốc: [
 
 # 🗺️ TIMELINE THỰC HIỆN (theo ngày — phủ 100% SRS)
 
-> **👉 VỊ TRÍ HIỆN TẠI: Đầu NGÀY 9.** Ngày 1–8 (Auth → Danh mục/TKB → User Admin → Điểm → Điểm danh → Bài tập) đã xong.
+> **👉 VỊ TRÍ HIỆN TẠI: Đầu NGÀY 11 (Bước 1 đang làm).** Ngày 1–10 đã xong theo git.
 
 Ký hiệu: ✅ xong · 🟡 đang làm · ⬜ chưa làm. "Ngày" = 1 buổi làm tập trung, tự map vào lịch thật.
 Mỗi ngày kết thúc bằng **chạy thử + commit**.
@@ -68,15 +68,15 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 - [x] CRUD Assignment (deadline, đề bài) + Submission + chấm điểm/feedback
 - [x] API trạng thái nộp bài (To-Do / Done / Overdue)
 
-### NGÀY 9 — Đơn xin nghỉ (FR2.5, FR3.3) · *PH / HS / GV*  ⬅️ LÀM TIẾP
-- [ ] Tạo đơn (đính kèm ảnh y tế) + theo dõi trạng thái
-- [ ] GV Approve/Reject → tự bắn thông báo kết quả
+### ✅ NGÀY 9 — Đơn xin nghỉ (FR2.5, FR3.3) · *PH / HS / GV*
+- [x] Tạo đơn (đính kèm ảnh y tế) + theo dõi trạng thái
+- [x] GV Approve/Reject → tự bắn thông báo kết quả
 
-### NGÀY 10 — Thông báo & Bảng tin (FR1.4, FR3.4, FR5.4) · *mọi role*
-- [ ] Notification (in-app) + Announcement (lớp / toàn trường)
-- [ ] Hạ tầng **Push Notification (FCM)** + auto-notify các sự kiện (điểm mới, đơn duyệt, nhắc học phí…)
+### ✅ NGÀY 10 — Thông báo & Bảng tin (FR1.4, FR3.4, FR5.4) · *mọi role*
+- [x] Notification (in-app) + Announcement (lớp / toàn trường)
+- [x] Hạ tầng **Push Notification (FCM)** + auto-notify các sự kiện (điểm mới, đơn duyệt, nhắc học phí…)
 
-### NGÀY 11 — Tài chính & Cổng thanh toán (FR4.1, FR4.2, FR2.6) · *Admin / PH*
+### 🟡 NGÀY 11 — Tài chính & Cổng thanh toán (FR4.1, FR4.2, FR2.6) · *Admin / PH*  ⬅️ LÀM TIẾP
 - [ ] Quản lý Khoản thu/Hóa đơn (FeeCategory, FeeInvoice) + sửa precision `decimal(18,2)`
 - [ ] Tích hợp **VNPay** + **PayOS** (tạo giao dịch + verify checksum/signature)
 - [ ] Webhook đối soát giao dịch + biên lai điện tử (NFR: không lưu thông tin thẻ)

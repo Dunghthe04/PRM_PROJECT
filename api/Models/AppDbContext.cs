@@ -29,6 +29,8 @@ public class AppDbContext : DbContext
 
     public DbSet<FeeCategory> FeeCategories { get; set; }
     public DbSet<FeeInvoice> FeeInvoices { get; set; }
+    public DbSet<PaymentTransaction> PaymentTransactions { get; set; }
+    public DbSet<PaymentGatewayConfig> PaymentGatewayConfigs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -268,5 +270,50 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(t => t.TeacherId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Học phí: decimal(18,2) — tránh cắt số tiền (cảnh báo EF từ Ngày 1)
+        modelBuilder.Entity<FeeCategory>()
+            .Property(f => f.DefaultAmount)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<FeeInvoice>()
+            .Property(f => f.Amount)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<FeeInvoice>()
+            .HasOne(f => f.Student)
+            .WithMany()
+            .HasForeignKey(f => f.StudentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<FeeInvoice>()
+            .HasOne(f => f.FeeCategory)
+            .WithMany()
+            .HasForeignKey(f => f.FeeCategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<FeeInvoice>()
+            .HasIndex(f => f.TransactionId);
+
+        modelBuilder.Entity<FeeInvoice>()
+            .HasIndex(f => f.ReceiptNumber);
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .Property(p => p.Amount)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasIndex(p => p.OrderCode)
+            .IsUnique();
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasOne(p => p.FeeInvoice)
+            .WithMany(i => i.PaymentTransactions)
+            .HasForeignKey(p => p.FeeInvoiceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PaymentGatewayConfig>()
+            .HasIndex(c => c.Provider)
+            .IsUnique();
     }
 }
