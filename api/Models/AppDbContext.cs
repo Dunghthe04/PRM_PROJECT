@@ -171,6 +171,23 @@ public class AppDbContext : DbContext
             .HasOne(lr => lr.Student)
             .WithMany()
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<LeaveRequest>()
+            .HasOne(lr => lr.Class)
+            .WithMany()
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<LeaveRequest>()
+            .HasOne(lr => lr.SubmittedBy)
+            .WithMany()
+            .HasForeignKey(lr => lr.SubmittedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<LeaveRequest>()
+            .HasOne(lr => lr.ApprovedByTeacher)
+            .WithMany()
+            .HasForeignKey(lr => lr.ApprovedByTeacherId)
+            .OnDelete(DeleteBehavior.Restrict);
             
         modelBuilder.Entity<Announcement>()
             .HasOne(a => a.CreatedBy)
