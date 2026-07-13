@@ -9,6 +9,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
+// QuestPDF dùng giấy phép Community (miễn phí) — set 1 lần khi khởi động (FR5.5)
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -105,6 +108,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IPushNotificationService, ConsolePushNotificationService>();
 builder.Services.AddScoped<IFeeService, FeeService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddHttpClient();
 
 // wwwroot phải tồn tại trước Build để StaticFiles phục vụ /avatars, /uploads

@@ -18,7 +18,7 @@ Monorepo gồm Mobile App (Flutter) + Backend API (.NET 8). Tài liệu gốc: [
 
 # 🗺️ TIMELINE THỰC HIỆN (theo ngày — phủ 100% SRS)
 
-> **👉 VỊ TRÍ HIỆN TẠI: Đầu NGÀY 12 (Bước 1).** Ngày 1–11 đã xong theo git.
+> **👉 VỊ TRÍ HIỆN TẠI: Cuối NGÀY 12 (xong).** Tiếp theo Ngày 13 — Nền Mobile.
 
 Ký hiệu: ✅ xong · 🟡 đang làm · ⬜ chưa làm. "Ngày" = 1 buổi làm tập trung, tự map vào lịch thật.
 Mỗi ngày kết thúc bằng **chạy thử + commit**.
@@ -81,15 +81,15 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 - [x] Tích hợp **VNPay** + **PayOS** (tạo giao dịch + verify checksum/signature)
 - [x] Webhook đối soát giao dịch + biên lai điện tử (NFR: không lưu thông tin thẻ)
 
-### 🟡 NGÀY 12 — Báo cáo & Thống kê (FR5.5) · *Admin / Trưởng bộ môn*  ⬅️ LÀM TIẾP
-- [ ] API tổng hợp: bảng điểm, tỷ lệ chuyên cần, tình trạng học phí
-- [ ] Xuất **Excel / PDF**
+### ✅ NGÀY 12 — Báo cáo & Thống kê (FR5.5) · *Admin / Trưởng bộ môn*
+- [x] API tổng hợp: dashboard, bảng điểm, tỷ lệ chuyên cần, tình trạng học phí
+- [x] Xuất **Excel (ClosedXML) / PDF (QuestPDF)** — `?format=json|excel|pdf`
 
 ---
 
 ## 🅑 GIAI ĐOẠN MOBILE (Ngày 13–18) — Student, Parent, Teacher
 
-### NGÀY 13 — Nền Mobile (FR1.1, FR1.3, FR4.4)
+### 🟡 NGÀY 13 — Nền Mobile (FR1.1, FR1.3, FR4.4)  ⬅️ LÀM TIẾP
 - [ ] Đổi theme cam `#FF6B00` ([mobile/lib/main.dart](mobile/lib/main.dart) đang `Colors.blue`)
 - [ ] `dio` client + interceptor JWT, model từ DTO, secure storage
 - [ ] Màn Đăng nhập + Bottom Navigation + điều hướng theo vai trò
@@ -166,7 +166,7 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 
 ---
 
-## 👉 HÔM NAY LÀM GÌ (Ngày 12)
-1. API báo cáo: bảng điểm, chuyên cần, học phí (Admin / Trưởng bộ môn).
-2. Xuất Excel / PDF.
-3. Chạy thử Swagger → commit.
+## 👉 HÔM NAY LÀM GÌ (Ngày 13 — Nền Mobile)
+1. Đổi theme cam `#FF6B00`, dựng `dio` client + interceptor JWT.
+2. Màn Đăng nhập + Bottom Navigation điều hướng theo vai trò.
+3. Màn Hồ sơ/đổi MK + Force Update version check.
