@@ -131,7 +131,12 @@ if (app.Environment.IsDevelopment())
     app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 }
 
-app.UseHttpsRedirection();
+// Dev: KHÔNG redirect http→https để mobile (Android emulator) gọi http trực tiếp được.
+// Production vẫn bắt buộc https.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseStaticFiles();
 
 app.UseAuthentication();
