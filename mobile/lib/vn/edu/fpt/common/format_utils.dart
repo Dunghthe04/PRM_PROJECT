@@ -14,6 +14,15 @@ class FormatUtils {
     return '$d/$mo/$y $h:$mi';
   }
 
+  /// Định dạng DateTime thành "dd/MM/yyyy" (chỉ ngày, không giờ).
+  ///
+  /// Nhận: [dt] — thời điểm cần hiển thị.
+  /// Trả về (String): vd "14/07/2026".
+  static String date(DateTime dt) {
+    final local = dt.toLocal();
+    return '${_pad2(local.day)}/${_pad2(local.month)}/${local.year}';
+  }
+
   /// Định dạng "cách đây bao lâu" ngắn gọn (vd "5 phút trước").
   ///
   /// Nhận: [dt] — mốc thời gian trong quá khứ.

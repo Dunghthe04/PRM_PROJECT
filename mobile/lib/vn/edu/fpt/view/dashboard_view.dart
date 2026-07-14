@@ -175,18 +175,18 @@ class _DashboardTabState extends State<DashboardTab> {
       default: // Parent, Student
         return [
           _ActionCard(
+              icon: Icons.school,
+              label: 'Học tập',
+              onTap: () => widget.onNavigateTab('study')),
+          notiCard,
+          _ActionCard(
               icon: Icons.article,
               label: 'Bảng tin',
               onTap: () => widget.onNavigateTab('announcements')),
-          notiCard,
           _ActionCard(
-              icon: Icons.calendar_month,
-              label: 'Thời khóa biểu',
-              onTap: () => _todo('Thời khóa biểu')),
-          _ActionCard(
-              icon: Icons.grade,
-              label: 'Bảng điểm',
-              onTap: () => _todo('Bảng điểm')),
+              icon: Icons.assignment,
+              label: 'Bài tập',
+              onTap: () => widget.onNavigateTab('study')),
         ];
     }
   }

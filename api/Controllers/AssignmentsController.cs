@@ -43,16 +43,21 @@ public class AssignmentsController : ControllerBase
     }
 
     /// <summary>
-    /// GET /api/assignments/me?status=ToDo — bài tập của HS (ToDo/Done/Overdue).
+    /// GET /api/assignments/me?status=ToDo&amp;studentId= — bài tập cá nhân.
+    /// - Học sinh: bài tập của chính mình (ToDo/Done/Overdue).
+    /// - Phụ huynh: bài tập của con được chọn (studentId); bỏ trống → con đầu tiên.
     /// </summary>
     [HttpGet("assignments/me")]
-    [Authorize(Roles = "Student")]
-    public async Task<IActionResult> GetMy([FromQuery] MyAssignmentsQueryDto query)
+    [Authorize(Roles = "Student,Parent")]
+    public async Task<IActionResult> GetMy(
+        [FromQuery] MyAssignmentsQueryDto query,
+        [FromQuery] int? studentId = null)
     {
-        var studentId = GetCurrentUserId();
-        if (studentId == null) return Unauthorized();
+        var userId = GetCurrentUserId();
+        var role = GetCurrentUserRole();
+        if (userId == null || role == null) return Unauthorized();
 
-        var (result, error) = await _service.GetMyAsync(studentId.Value, query);
+        var (result, error) = await _service.GetMyAsync(userId.Value, role.Value, studentId, query);
         if (error != null) return BadRequest(new { message = error });
         return Ok(result);
     }

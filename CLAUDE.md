@@ -18,7 +18,7 @@ Monorepo gồm Mobile App (Flutter) + Backend API (.NET 8). Tài liệu gốc: [
 
 # 🗺️ TIMELINE THỰC HIỆN (theo ngày — phủ 100% SRS)
 
-> **👉 VỊ TRÍ HIỆN TẠI: Cuối NGÀY 14 (xong).** Tiếp theo Ngày 15 — Học sinh/PH: Học tập (TKB + Bảng điểm + Bài tập).
+> **👉 VỊ TRÍ HIỆN TẠI: Cuối NGÀY 15 (xong).** Tiếp theo Ngày 16 — Học sinh/PH: Đơn nghỉ & Học phí.
 
 Ký hiệu: ✅ xong · 🟡 đang làm · ⬜ chưa làm. "Ngày" = 1 buổi làm tập trung, tự map vào lịch thật.
 Mỗi ngày kết thúc bằng **chạy thử + commit**.
@@ -100,11 +100,13 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 - [x] **Phụ huynh: Switch Profile** quản lý nhiều con (FR2.1) — API `/api/account/children`
 - [x] **Push notification FCM thực** (FirebaseAdmin) + `google-services.json` + `DbSeeder` demo data
 
-### 🟡 NGÀY 15 — Học sinh/PH: Học tập (FR2.3, FR2.4)  ⬅️ LÀM TIẾP
-- [ ] Thời khóa biểu theo tuần + Bảng điểm chi tiết (FR2.3)
-- [ ] Bài tập: xem (To-Do/Done/Overdue) + nộp link/file (FR2.4)
+### ✅ NGÀY 15 — Học sinh/PH: Học tập (FR2.3, FR2.4)
+- [x] Thời khóa biểu theo tuần + Bảng điểm chi tiết (FR2.3)
+- [x] Bài tập: xem (To-Do/Done/Overdue) + nộp link/file (FR2.4)
+- [x] Backend: cho phép PH truyền `studentId` (Switch Profile) ở TKB/Bài tập/Điểm
+- [x] Seed dữ liệu học tập (lớp 10A1, môn, TKB, điểm, bài tập) để test giao diện
 
-### NGÀY 16 — Học sinh/PH: Đơn nghỉ & Học phí (FR2.5, FR2.6)
+### 🟡 NGÀY 16 — Học sinh/PH: Đơn nghỉ & Học phí (FR2.5, FR2.6)  ⬅️ LÀM TIẾP
 - [ ] Tạo & theo dõi đơn xin nghỉ (FR2.5)
 - [ ] Thanh toán học phí VNPay/PayOS + lịch sử + biên lai (FR2.6)
 
@@ -167,7 +169,6 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 
 ---
 
-## 👉 HÔM NAY LÀM GÌ (Ngày 15 — Học sinh/PH: Học tập)
-1. Thời khóa biểu theo tuần (FR2.3) — gọi API TKB, hiển thị theo thứ/tiết.
-2. Bảng điểm chi tiết theo môn/kỳ (FR2.3).
-3. Bài tập: danh sách To-Do/Done/Overdue + nộp link/file (FR2.4).
+## 👉 HÔM NAY LÀM GÌ (Ngày 16 — Học sinh/PH: Đơn nghỉ & Học phí)
+1. Đơn xin nghỉ (FR2.5): tạo đơn (lý do + ảnh y tế) + theo dõi trạng thái.
+2. Học phí (FR2.6): danh sách hóa đơn + thanh toán VNPay/PayOS + lịch sử + biên lai.

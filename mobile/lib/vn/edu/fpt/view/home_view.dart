@@ -11,6 +11,7 @@ import 'announcement_view.dart';
 import 'child_switcher.dart';
 import 'dashboard_view.dart';
 import 'notification_view.dart';
+import 'study_view.dart';
 
 /// HomeView: sau login, tải hồ sơ (/account/me) rồi dựng khung chính.
 class HomeView extends StatefulWidget {
@@ -218,6 +219,7 @@ List<_TabItem> _buildTabs(
     default: // Parent, Student
       return [
         home,
+        _TabItem(id: 'study', icon: Icons.school, label: 'Học tập', body: StudyTab(user: user)),
         _TabItem(id: 'announcements', icon: Icons.article, label: 'Bảng tin', body: const AnnouncementTab()),
         noti,
         profile,

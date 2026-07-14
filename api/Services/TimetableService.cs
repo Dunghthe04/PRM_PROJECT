@@ -13,8 +13,14 @@ public interface ITimetableService
     /// <summary>TKB theo lớp (weekStart tùy chọn — mặc định thứ Hai tuần hiện tại).</summary>
     Task<(WeeklyTimetableDto? Result, string? Error)> GetByClassAsync(int classId, DateTime? weekStart);
 
-    /// <summary>TKB của HS đang login (lấy từ ClassStudent).</summary>
-    Task<(WeeklyTimetableDto? Result, string? Error)> GetMyAsync(int userId, DateTime? weekStart);
+    /// <summary>
+    /// TKB của Học sinh đang login, hoặc của 1 người con (khi Phụ huynh gọi).
+    /// - HS: xem TKB của chính mình (bỏ qua studentId).
+    /// - PH: truyền studentId = id của con muốn xem (phải là con đã liên kết).
+    ///   Nếu PH không truyền studentId → tự lấy người con đầu tiên.
+    /// </summary>
+    Task<(WeeklyTimetableDto? Result, string? Error)> GetMyAsync(
+        int userId, UserRole role, int? studentId, DateTime? weekStart);
 
     /// <summary>Lịch dạy của GV đang login.</summary>
     Task<(WeeklyTimetableDto? Result, string? Error)> GetTeacherAsync(int teacherId, DateTime? weekStart);
@@ -66,24 +72,67 @@ public class TimetableService : ITimetableService
     }
 
     /// <summary>HS: lấy mọi lớp đang học → gộp TKB.</summary>
-    public async Task<(WeeklyTimetableDto? Result, string? Error)> GetMyAsync(int userId, DateTime? weekStart)
+    public async Task<(WeeklyTimetableDto? Result, string? Error)> GetMyAsync(
+        int userId, UserRole role, int? studentId, DateTime? weekStart)
     {
-        var user = await _userRepository.GetUserByIdAsync(userId);
-        if (user == null) return (null, "Không tìm thấy người dùng.");
+        // Xác định "học sinh mục tiêu" cần lấy TKB.
+        // - HS: chính là bản thân.
+        // - PH: là người con được chọn (studentId) và phải là con đã liên kết.
+        var (targetStudentId, error) = await ResolveTargetStudentAsync(userId, role, studentId);
+        if (error != null) return (null, error);
 
-        if (user.Role != UserRole.Student)
-            return (null, "Endpoint này dành cho học sinh. Phụ huynh dùng Switch Profile (Ngày 14).");
-
+        // Lấy các lớp mà học sinh mục tiêu đang thuộc về.
         var classIds = await _context.ClassStudents
-            .Where(cs => cs.StudentId == userId)
+            .Where(cs => cs.StudentId == targetStudentId)
             .Select(cs => cs.ClassId)
             .ToListAsync();
 
+        // Chưa xếp lớp → trả TKB rỗng (không coi là lỗi).
         if (classIds.Count == 0)
             return (BuildWeekly(new List<TimetableSlot>(), weekStart), null);
 
         var slots = await _timetableRepository.GetByClassIdsAsync(classIds);
         return (BuildWeekly(slots, weekStart), null);
+    }
+
+    /// <summary>
+    /// Quy đổi (userId, role, studentId) → id học sinh cần xem dữ liệu.
+    /// Nhận:
+    ///   - userId: id người đang đăng nhập.
+    ///   - role: vai trò (Student / Parent).
+    ///   - requestedStudentId: id con mà PH muốn xem (null nếu HS hoặc PH chưa chọn).
+    /// Trả về: (targetStudentId, error). error != null nếu không hợp lệ.
+    /// </summary>
+    private async Task<(int TargetStudentId, string? Error)> ResolveTargetStudentAsync(
+        int userId, UserRole role, int? requestedStudentId)
+    {
+        if (role == UserRole.Student)
+            return (userId, null);
+
+        if (role == UserRole.Parent)
+        {
+            // Danh sách id các con đã liên kết với phụ huynh này.
+            var childIds = await _context.StudentParents
+                .Where(sp => sp.ParentId == userId)
+                .Select(sp => sp.StudentId)
+                .ToListAsync();
+
+            if (childIds.Count == 0)
+                return (0, "Tài khoản phụ huynh chưa liên kết học sinh nào.");
+
+            // PH có truyền studentId → phải là con của mình.
+            if (requestedStudentId.HasValue)
+            {
+                if (!childIds.Contains(requestedStudentId.Value))
+                    return (0, "Học sinh không thuộc quyền quản lý của phụ huynh.");
+                return (requestedStudentId.Value, null);
+            }
+
+            // Không truyền → mặc định lấy người con đầu tiên.
+            return (childIds[0], null);
+        }
+
+        return (0, "Vai trò không được phép truy cập dữ liệu học tập cá nhân.");
     }
 
     /// <summary>GV: các tiết có TeacherId = user hiện tại.</summary>

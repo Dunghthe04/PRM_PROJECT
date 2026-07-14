@@ -33,6 +33,9 @@ public static class DbSeeder
         await EnsureLinkAsync(db, parent.Id, student2.Id);
         await db.SaveChangesAsync();
 
+        // 2b) Dữ liệu học tập (Ngày 15): lớp + môn + TKB + điểm + bài tập.
+        await SeedAcademicAsync(db, teacher);
+
         // 3) Bảng tin mẫu — chỉ seed khi CHƯA có bảng tin nào.
         if (!await db.Announcements.AnyAsync())
         {
@@ -126,5 +129,194 @@ public static class DbSeeder
             .AnyAsync(sp => sp.ParentId == parentId && sp.StudentId == studentId);
         if (!exists)
             db.StudentParents.Add(new StudentParent { ParentId = parentId, StudentId = studentId });
+    }
+
+    /// <summary>
+    /// Seed dữ liệu học tập (Ngày 15): 1 học kỳ, các môn, 1 lớp "10A1",
+    /// ghi danh MỌI học sinh chưa có lớp vào lớp này (gồm cả tài khoản test tự tạo),
+    /// phân công GV, thời khóa biểu tuần, điểm đã công bố và vài bài tập mẫu.
+    /// Idempotent: chỉ tạo phần nào còn thiếu.
+    ///
+    /// Nhận: [db] DbContext, [teacher] giáo viên demo (dạy mọi môn cho gọn).
+    /// </summary>
+    private static async Task SeedAcademicAsync(AppDbContext db, User teacher)
+    {
+        // --- Học kỳ hiện tại ---
+        var semester = await db.Semesters.FirstOrDefaultAsync(s => s.Name == "Học kỳ 1 (2026-2027)");
+        if (semester == null)
+        {
+            semester = new Semester
+            {
+                Name = "Học kỳ 1 (2026-2027)",
+                StartDate = new DateTime(2026, 9, 1),
+                EndDate = new DateTime(2027, 1, 15),
+            };
+            db.Semesters.Add(semester);
+            await db.SaveChangesAsync();
+        }
+
+        // --- Các môn học (tạo nếu thiếu, khớp theo Code) ---
+        var math = await EnsureSubjectAsync(db, "Toán", "MATH");
+        var literature = await EnsureSubjectAsync(db, "Ngữ Văn", "LIT");
+        var english = await EnsureSubjectAsync(db, "Tiếng Anh", "ENG");
+        var physics = await EnsureSubjectAsync(db, "Vật Lý", "PHY");
+        var chemistry = await EnsureSubjectAsync(db, "Hóa Học", "CHE");
+        await db.SaveChangesAsync();
+
+        // --- Lớp 10A1 thuộc học kỳ trên ---
+        var cls = await db.Classes.FirstOrDefaultAsync(c => c.Name == "10A1");
+        if (cls == null)
+        {
+            cls = new Class { Name = "10A1", SemesterId = semester.Id };
+            db.Classes.Add(cls);
+            await db.SaveChangesAsync();
+        }
+
+        // --- Ghi danh: mọi học sinh CHƯA có lớp → vào lớp 10A1 ---
+        // (đảm bảo tài khoản HS test bạn tự tạo cũng có TKB để xem giao diện)
+        var classlessStudents = await db.Users
+            .Where(u => u.Role == UserRole.Student
+                && !db.ClassStudents.Any(cs => cs.StudentId == u.Id))
+            .ToListAsync();
+        foreach (var s in classlessStudents)
+        {
+            db.ClassStudents.Add(new ClassStudent { ClassId = cls.Id, StudentId = s.Id });
+        }
+        await db.SaveChangesAsync();
+
+        // --- Phân công GV dạy các môn cho lớp (nếu chưa có) ---
+        var subjects = new[] { math, literature, english, physics, chemistry };
+        foreach (var subj in subjects)
+        {
+            var assigned = await db.TeacherAssignments.AnyAsync(ta =>
+                ta.TeacherId == teacher.Id && ta.ClassId == cls.Id && ta.SubjectId == subj.Id);
+            if (!assigned)
+            {
+                db.TeacherAssignments.Add(new TeacherAssignment
+                {
+                    TeacherId = teacher.Id,
+                    ClassId = cls.Id,
+                    SubjectId = subj.Id,
+                });
+            }
+        }
+        await db.SaveChangesAsync();
+
+        // --- Thời khóa biểu tuần (chỉ seed khi lớp chưa có tiết nào) ---
+        if (!await db.TimetableSlots.AnyAsync(t => t.ClassId == cls.Id))
+        {
+            // (thứ, tiết, môn, phòng) — 1 = Thứ Hai … 6 = Thứ Bảy
+            var plan = new (int Day, int Period, Subject Subject, string Room)[]
+            {
+                (1, 1, math, "A101"),
+                (1, 2, literature, "A101"),
+                (1, 3, english, "A101"),
+                (2, 1, physics, "Lab-1"),
+                (2, 2, math, "A101"),
+                (2, 3, chemistry, "Lab-2"),
+                (3, 1, literature, "A101"),
+                (3, 2, english, "A101"),
+                (3, 3, math, "A101"),
+                (4, 1, math, "A101"),
+                (4, 2, physics, "Lab-1"),
+                (4, 3, literature, "A101"),
+                (5, 1, english, "A101"),
+                (5, 2, chemistry, "Lab-2"),
+                (5, 3, math, "A101"),
+            };
+            foreach (var p in plan)
+            {
+                db.TimetableSlots.Add(new TimetableSlot
+                {
+                    ClassId = cls.Id,
+                    SubjectId = p.Subject.Id,
+                    TeacherId = teacher.Id,
+                    DayOfWeek = p.Day,
+                    Period = p.Period,
+                    Room = p.Room,
+                });
+            }
+            await db.SaveChangesAsync();
+        }
+
+        // --- Điểm đã công bố cho từng học sinh trong lớp (nếu lớp chưa có điểm) ---
+        if (!await db.Grades.AnyAsync(g => g.ClassId == cls.Id))
+        {
+            var studentIds = await db.ClassStudents
+                .Where(cs => cs.ClassId == cls.Id)
+                .Select(cs => cs.StudentId)
+                .ToListAsync();
+
+            // (môn, loại đầu điểm, điểm) — dùng chung cho các HS cho gọn.
+            var gradePlan = new (Subject Subject, string Type, double Score)[]
+            {
+                (math, "Oral", 8.5),
+                (math, "Midterm", 7.5),
+                (literature, "Midterm", 8.0),
+                (english, "Oral", 9.0),
+                (physics, "Quiz15", 7.0),
+            };
+            foreach (var sid in studentIds)
+            {
+                foreach (var gp in gradePlan)
+                {
+                    db.Grades.Add(new Grade
+                    {
+                        StudentId = sid,
+                        ClassId = cls.Id,
+                        SubjectId = gp.Subject.Id,
+                        SemesterId = semester.Id,
+                        AssessmentType = gp.Type,
+                        Score = gp.Score,
+                        Status = GradeStatus.Published, // HS/PH mới xem được
+                        CreatedByTeacherId = teacher.Id,
+                        PublishedAt = DateTime.UtcNow.AddDays(-1),
+                        CreatedAt = DateTime.UtcNow.AddDays(-2),
+                    });
+                }
+            }
+            await db.SaveChangesAsync();
+        }
+
+        // --- Bài tập mẫu cho lớp (nếu lớp chưa có bài tập) ---
+        if (!await db.Assignments.AnyAsync(a => a.ClassId == cls.Id))
+        {
+            db.Assignments.AddRange(
+                new Assignment
+                {
+                    Title = "Bài tập Toán - Chương 1",
+                    Description = "Làm các bài 1 đến 10 trang 25 SGK.",
+                    DueDate = DateTime.UtcNow.AddDays(-2), // đã quá hạn → Overdue
+                    MaxScore = 10,
+                    ClassId = cls.Id,
+                    SubjectId = math.Id,
+                    CreatedByTeacherId = teacher.Id,
+                    CreatedAt = DateTime.UtcNow.AddDays(-5),
+                },
+                new Assignment
+                {
+                    Title = "Luyện tập Ngữ Văn - Bài thơ",
+                    Description = "Viết đoạn văn cảm nhận về bài thơ đã học (khoảng 200 từ).",
+                    DueDate = DateTime.UtcNow.AddDays(3), // còn hạn → ToDo
+                    MaxScore = 10,
+                    ClassId = cls.Id,
+                    SubjectId = literature.Id,
+                    CreatedByTeacherId = teacher.Id,
+                    CreatedAt = DateTime.UtcNow.AddDays(-1),
+                }
+            );
+            await db.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>Tạo môn học nếu Code chưa tồn tại; trả về môn (cũ hoặc mới).</summary>
+    private static async Task<Subject> EnsureSubjectAsync(AppDbContext db, string name, string code)
+    {
+        var subject = await db.Subjects.FirstOrDefaultAsync(s => s.Code == code);
+        if (subject != null) return subject;
+
+        subject = new Subject { Name = name, Code = code };
+        db.Subjects.Add(subject);
+        return subject;
     }
 }

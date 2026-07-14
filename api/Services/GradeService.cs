@@ -94,11 +94,24 @@ public class GradeService : IGradeService
         }
         else if (actorRole == UserRole.Parent)
         {
-            // PH xem điểm đã Publish của tất cả con liên kết (FR2.1)
-            studentIds = await _context.StudentParents
+            // PH xem điểm đã Publish của các con liên kết (FR2.1).
+            var childIds = await _context.StudentParents
                 .Where(sp => sp.ParentId == actorId)
                 .Select(sp => sp.StudentId)
                 .ToListAsync();
+
+            // Nếu PH chọn 1 con cụ thể (Switch Profile) → chỉ lấy con đó,
+            // và phải là con đã liên kết; ngược lại lấy tất cả các con.
+            if (query.StudentId.HasValue)
+            {
+                if (!childIds.Contains(query.StudentId.Value))
+                    return new List<GradeDto>(); // con không thuộc PH → trả rỗng
+                studentIds.Add(query.StudentId.Value);
+            }
+            else
+            {
+                studentIds = childIds;
+            }
         }
         else
         {

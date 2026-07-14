@@ -63,6 +63,12 @@ public class MyGradesQueryDto
 {
     /// <summary>Lọc theo kỳ — null = tất cả kỳ.</summary>
     public int? SemesterId { get; set; }
+
+    /// <summary>
+    /// (Chỉ Phụ huynh) Lọc theo 1 người con cụ thể — null = tất cả các con.
+    /// HS bỏ qua trường này.
+    /// </summary>
+    public int? StudentId { get; set; }
 }
 
 /// <summary>

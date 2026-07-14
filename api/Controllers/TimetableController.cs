@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Api.DTOs;
+using Api.Models;
 using Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -40,16 +41,21 @@ public class TimetableController : ControllerBase
     }
 
     /// <summary>
-    /// GET /api/timetable/me?weekStart= — TKB của học sinh đang đăng nhập.
+    /// GET /api/timetable/me?weekStart=&amp;studentId= — TKB cá nhân.
+    /// - Học sinh: TKB của chính mình (bỏ qua studentId).
+    /// - Phụ huynh: TKB của con được chọn (studentId); bỏ trống → con đầu tiên.
     /// </summary>
     [HttpGet("me")]
-    [Authorize(Roles = "Student")]
-    public async Task<IActionResult> GetMy([FromQuery] DateTime? weekStart = null)
+    [Authorize(Roles = "Student,Parent")]
+    public async Task<IActionResult> GetMy(
+        [FromQuery] DateTime? weekStart = null,
+        [FromQuery] int? studentId = null)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        var role = GetCurrentUserRole();
+        if (userId == null || role == null) return Unauthorized();
 
-        var (result, error) = await _service.GetMyAsync(userId.Value, weekStart);
+        var (result, error) = await _service.GetMyAsync(userId.Value, role.Value, studentId, weekStart);
         if (error != null) return BadRequest(new { message = error });
         return Ok(result);
     }
@@ -107,5 +113,12 @@ public class TimetableController : ControllerBase
     {
         var claim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         return int.TryParse(claim, out var id) ? id : null;
+    }
+
+    /// <summary>Đọc role từ JWT claim Role — map sang enum UserRole.</summary>
+    private UserRole? GetCurrentUserRole()
+    {
+        var claim = User.FindFirstValue(ClaimTypes.Role);
+        return claim != null && Enum.TryParse<UserRole>(claim, out var role) ? role : null;
     }
 }

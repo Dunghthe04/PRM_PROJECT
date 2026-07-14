@@ -17,8 +17,13 @@ public interface IAssignmentService
         AssignmentListQueryDto query, int actorId, UserRole actorRole);
 
     /// <summary>Bài tập của HS đang login + trạng thái ToDo/Done/Overdue.</summary>
+    /// <summary>
+    /// Bài tập của HS (ToDo/Done/Overdue). PH xem theo con đang chọn.
+    /// - HS: bỏ qua studentId.
+    /// - PH: studentId = con muốn xem (phải liên kết); null → con đầu tiên.
+    /// </summary>
     Task<(List<AssignmentDto>? Result, string? Error)> GetMyAsync(
-        int studentId, MyAssignmentsQueryDto query);
+        int userId, UserRole role, int? studentId, MyAssignmentsQueryDto query);
 
     /// <summary>Chi tiết 1 bài tập.</summary>
     Task<(AssignmentDto? Result, string? Error)> GetByIdAsync(int id, int? studentIdForStatus = null);
@@ -107,10 +112,14 @@ public class AssignmentService : IAssignmentService
     /// HS: lấy bài tập các lớp đang học, gắn Status theo DueDate + đã nộp chưa.
     /// </summary>
     public async Task<(List<AssignmentDto>? Result, string? Error)> GetMyAsync(
-        int studentId, MyAssignmentsQueryDto query)
+        int userId, UserRole role, int? studentId, MyAssignmentsQueryDto query)
     {
+        // Quy đổi ra học sinh mục tiêu (HS = bản thân; PH = con đang chọn).
+        var (targetStudentId, error) = await ResolveTargetStudentAsync(userId, role, studentId);
+        if (error != null) return (null, error);
+
         var classIds = await _context.ClassStudents
-            .Where(cs => cs.StudentId == studentId)
+            .Where(cs => cs.StudentId == targetStudentId)
             .Select(cs => cs.ClassId)
             .ToListAsync();
 
@@ -119,7 +128,7 @@ public class AssignmentService : IAssignmentService
 
         var items = await _assignmentRepository.GetByClassIdsAsync(classIds);
         var dtos = items
-            .Select(a => MapAssignment(a, ResolveStatus(a, studentId)))
+            .Select(a => MapAssignment(a, ResolveStatus(a, targetStudentId)))
             .ToList();
 
         if (!string.IsNullOrWhiteSpace(query.Status))
@@ -130,6 +139,40 @@ public class AssignmentService : IAssignmentService
         }
 
         return (dtos, null);
+    }
+
+    /// <summary>
+    /// Quy đổi (userId, role, studentId) → id học sinh cần xem dữ liệu.
+    /// HS: chính mình. PH: con được chọn (validate liên kết) hoặc con đầu tiên.
+    /// Trả về (targetStudentId, error) — error != null nếu không hợp lệ.
+    /// </summary>
+    private async Task<(int TargetStudentId, string? Error)> ResolveTargetStudentAsync(
+        int userId, UserRole role, int? requestedStudentId)
+    {
+        if (role == UserRole.Student)
+            return (userId, null);
+
+        if (role == UserRole.Parent)
+        {
+            var childIds = await _context.StudentParents
+                .Where(sp => sp.ParentId == userId)
+                .Select(sp => sp.StudentId)
+                .ToListAsync();
+
+            if (childIds.Count == 0)
+                return (0, "Tài khoản phụ huynh chưa liên kết học sinh nào.");
+
+            if (requestedStudentId.HasValue)
+            {
+                if (!childIds.Contains(requestedStudentId.Value))
+                    return (0, "Học sinh không thuộc quyền quản lý của phụ huynh.");
+                return (requestedStudentId.Value, null);
+            }
+
+            return (childIds[0], null);
+        }
+
+        return (0, "Vai trò không được phép truy cập dữ liệu học tập cá nhân.");
     }
 
     /// <inheritdoc />
