@@ -21,6 +21,8 @@ api/.vs/
 **/.vs/
 api/Properties/launchSettings.json
 api/appsettings.Development.json
+# Firebase service account (khóa bí mật — KHÔNG commit)
+api/firebase-service-account.json
 *.user
 *.userosscache
 *.suo

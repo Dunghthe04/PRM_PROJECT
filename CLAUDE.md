@@ -18,7 +18,7 @@ Monorepo gồm Mobile App (Flutter) + Backend API (.NET 8). Tài liệu gốc: [
 
 # 🗺️ TIMELINE THỰC HIỆN (theo ngày — phủ 100% SRS)
 
-> **👉 VỊ TRÍ HIỆN TẠI: Cuối NGÀY 12 (xong).** Tiếp theo Ngày 13 — Nền Mobile.
+> **👉 VỊ TRÍ HIỆN TẠI: Cuối NGÀY 14 (xong).** Tiếp theo Ngày 15 — Học sinh/PH: Học tập (TKB + Bảng điểm + Bài tập).
 
 Ký hiệu: ✅ xong · 🟡 đang làm · ⬜ chưa làm. "Ngày" = 1 buổi làm tập trung, tự map vào lịch thật.
 Mỗi ngày kết thúc bằng **chạy thử + commit**.
@@ -89,17 +89,18 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 
 ## 🅑 GIAI ĐOẠN MOBILE (Ngày 13–18) — Student, Parent, Teacher
 
-### 🟡 NGÀY 13 — Nền Mobile (FR1.1, FR1.3, FR4.4)  ⬅️ LÀM TIẾP
-- [ ] Đổi theme cam `#FF6B00` ([mobile/lib/main.dart](mobile/lib/main.dart) đang `Colors.blue`)
-- [ ] `dio` client + interceptor JWT, model từ DTO, secure storage
-- [ ] Màn Đăng nhập + Bottom Navigation + điều hướng theo vai trò
-- [ ] Màn Hồ sơ/đổi MK (FR1.3) + **Force Update** version check (FR4.4)
+### ✅ NGÀY 13 — Nền Mobile (FR1.1, FR1.3, FR4.4)
+- [x] Đổi theme cam `#FF6B00` ([mobile/lib/main.dart](mobile/lib/main.dart) đang `Colors.blue`)
+- [x] `dio` client + interceptor JWT, model từ DTO, secure storage
+- [x] Màn Đăng nhập + Bottom Navigation + điều hướng theo vai trò
+- [x] Màn Hồ sơ/đổi MK (FR1.3) + **Force Update** version check (FR4.4)
 
-### NGÀY 14 — Dashboard, Bảng tin, Thông báo (FR2.2, FR1.4, FR2.1)
-- [ ] Dashboard + Bảng tin (FR2.2) + Trung tâm Thông báo nhận push (FR1.4)
-- [ ] **Phụ huynh: Switch Profile** quản lý nhiều con (FR2.1)
+### ✅ NGÀY 14 — Dashboard, Bảng tin, Thông báo (FR2.2, FR1.4, FR2.1)
+- [x] Dashboard theo vai trò + Bảng tin (FR2.2) + Trung tâm Thông báo + badge chưa đọc (FR1.4)
+- [x] **Phụ huynh: Switch Profile** quản lý nhiều con (FR2.1) — API `/api/account/children`
+- [x] **Push notification FCM thực** (FirebaseAdmin) + `google-services.json` + `DbSeeder` demo data
 
-### NGÀY 15 — Học sinh/PH: Học tập (FR2.3, FR2.4)
+### 🟡 NGÀY 15 — Học sinh/PH: Học tập (FR2.3, FR2.4)  ⬅️ LÀM TIẾP
 - [ ] Thời khóa biểu theo tuần + Bảng điểm chi tiết (FR2.3)
 - [ ] Bài tập: xem (To-Do/Done/Overdue) + nộp link/file (FR2.4)
 
@@ -166,7 +167,7 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 
 ---
 
-## 👉 HÔM NAY LÀM GÌ (Ngày 13 — Nền Mobile)
-1. Đổi theme cam `#FF6B00`, dựng `dio` client + interceptor JWT.
-2. Màn Đăng nhập + Bottom Navigation điều hướng theo vai trò.
-3. Màn Hồ sơ/đổi MK + Force Update version check.
+## 👉 HÔM NAY LÀM GÌ (Ngày 15 — Học sinh/PH: Học tập)
+1. Thời khóa biểu theo tuần (FR2.3) — gọi API TKB, hiển thị theo thứ/tiết.
+2. Bảng điểm chi tiết theo môn/kỳ (FR2.3).
+3. Bài tập: danh sách To-Do/Done/Overdue + nộp link/file (FR2.4).

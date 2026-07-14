@@ -4,6 +4,8 @@ using Api.Common;
 using Api.Models;
 using Api.Repositories;
 using Api.Services;
+using FirebaseAdmin;
+using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -105,7 +107,27 @@ builder.Services.AddScoped<IAssignmentService, AssignmentService>();
 builder.Services.AddScoped<ILeaveRequestService, LeaveRequestService>();
 builder.Services.AddScoped<IAnnouncementService, AnnouncementService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
-builder.Services.AddScoped<IPushNotificationService, ConsolePushNotificationService>();
+
+// Push notification (FR1.4): nếu có file service account của Firebase thì gửi
+// push THẬT qua Firebase Admin SDK; không có thì fallback log ra console (dev).
+var firebaseCredPath = builder.Configuration["Firebase:CredentialPath"];
+var firebaseCredFullPath = string.IsNullOrWhiteSpace(firebaseCredPath)
+    ? null
+    : Path.Combine(builder.Environment.ContentRootPath, firebaseCredPath);
+
+if (firebaseCredFullPath != null && File.Exists(firebaseCredFullPath))
+{
+    // Khởi tạo FirebaseApp mặc định 1 lần khi app khởi động.
+    FirebaseApp.Create(new AppOptions
+    {
+        Credential = GoogleCredential.FromFile(firebaseCredFullPath),
+    });
+    builder.Services.AddScoped<IPushNotificationService, FirebaseAdminPushNotificationService>();
+}
+else
+{
+    builder.Services.AddScoped<IPushNotificationService, ConsolePushNotificationService>();
+}
 builder.Services.AddScoped<IFeeService, FeeService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IReportService, ReportService>();
@@ -143,5 +165,13 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Seed dữ liệu mẫu ở Development (idempotent) — tài khoản, phụ huynh-con, bảng tin.
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await DbSeeder.SeedAsync(db);
+}
 
 app.Run();

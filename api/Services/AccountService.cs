@@ -20,6 +20,9 @@ public interface IAccountService
 
     /// <summary>Đổi mật khẩu khi còn nhớ MK cũ.</summary>
     Task<(bool Success, string Message)> ChangePasswordAsync(int userId, ChangePasswordDto dto);
+
+    /// <summary>Danh sách con của phụ huynh (FR2.1 — Switch Profile).</summary>
+    Task<List<UserDto>> GetChildrenAsync(int parentId);
 }
 
 /// <summary>Implement IAccountService.</summary>
@@ -85,5 +88,12 @@ public class AccountService : IAccountService
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
         await _userRepository.UpdateUserAsync(user);
         return (true, "Đổi mật khẩu thành công.");
+    }
+
+    /// <summary>Lấy danh sách con liên kết rồi map sang DTO.</summary>
+    public async Task<List<UserDto>> GetChildrenAsync(int parentId)
+    {
+        var children = await _userRepository.GetChildrenAsync(parentId);
+        return children.Select(UserService.MapToDto).ToList();
     }
 }

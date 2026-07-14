@@ -36,6 +36,12 @@ public interface IUserRepository
 
     /// <summary>Xóa user theo Id. Trả false nếu không tìm thấy.</summary>
     Task<bool> DeleteUserAsync(int id);
+
+    /// <summary>
+    /// Danh sách học sinh (con) liên kết với 1 phụ huynh qua StudentParent (FR2.1).
+    /// Phục vụ Switch Profile trên app.
+    /// </summary>
+    Task<IReadOnlyList<User>> GetChildrenAsync(int parentId);
 }
 
 /// <summary>Implement IUserRepository bằng EF Core.</summary>
@@ -147,6 +153,18 @@ public class UserRepository : IUserRepository
         _context.Users.Remove(user);
         await _context.SaveChangesAsync();
         return true;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<User>> GetChildrenAsync(int parentId)
+    {
+        // Join StudentParents → lấy các User Student thuộc phụ huynh này.
+        return await _context.StudentParents
+            .Where(sp => sp.ParentId == parentId)
+            .Select(sp => sp.Student)
+            .OrderBy(u => u.FullName)
+            .AsNoTracking()
+            .ToListAsync();
     }
 
     /// <summary>Chuẩn hoá SĐT: chỉ giữ chữ số (bỏ khoảng trắng, dấu +, ...).</summary>

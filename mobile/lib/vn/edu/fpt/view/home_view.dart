@@ -3,7 +3,14 @@ import 'package:go_router/go_router.dart';
 import '../common/app_colors.dart';
 import '../controller/account_controller.dart';
 import '../controller/auth_controller.dart';
+import '../controller/notification_controller.dart';
 import '../model/user_model.dart';
+import '../service/parent_session.dart';
+import '../service/push_service.dart';
+import 'announcement_view.dart';
+import 'child_switcher.dart';
+import 'dashboard_view.dart';
+import 'notification_view.dart';
 
 /// HomeView: sau login, tải hồ sơ (/account/me) rồi dựng khung chính.
 class HomeView extends StatefulWidget {
@@ -24,6 +31,8 @@ class _HomeViewState extends State<HomeView> {
   void initState() {
     super.initState();
     _profileFuture = _accountController.getProfile(); // bắt đầu tải hồ sơ
+    // Đã đăng nhập → khởi tạo push, đăng ký FCM token với server (FR1.4).
+    PushService.instance.init();
   }
 
   @override
@@ -79,14 +88,53 @@ class _MainShell extends StatefulWidget {
 
 class _MainShellState extends State<_MainShell> {
   int _currentIndex = 0; // tab đang chọn
+  int _unreadCount = 0; // số thông báo chưa đọc → hiện badge trên tab Thông báo
+  final NotificationController _notificationController = NotificationController();
+  final AccountController _accountController = AccountController();
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshUnread(); // đếm số chưa đọc ngay khi vào app
+    _loadChildrenIfParent(); // nạp danh sách con nếu là phụ huynh (FR2.1)
+  }
+
+  /// Chỉ phụ huynh mới có "con" → nạp danh sách vào ParentSession.
+  Future<void> _loadChildrenIfParent() async {
+    if (widget.user.role != 'Parent') return;
+    final (children, _) = await _accountController.getChildren();
+    if (children != null) ParentSession.instance.setChildren(children);
+  }
+
+  /// Gọi API đếm lại số thông báo chưa đọc, cập nhật badge.
+  Future<void> _refreshUnread() async {
+    final count = await _notificationController.getUnreadCount();
+    if (mounted) setState(() => _unreadCount = count);
+  }
+
+  /// Chuyển sang tab có id cho trước (Dashboard nhờ điều hướng).
+  /// Nhận: [id] — id tab đích (vd 'notifications', 'announcements').
+  void _goToTabId(String id) {
+    final tabs = _buildTabs(widget.user, _refreshUnread, _goToTabId);
+    final idx = tabs.indexWhere((t) => t.id == id);
+    if (idx >= 0) setState(() => _currentIndex = idx);
+    _refreshUnread();
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Lấy danh sách tab theo vai trò
-    final tabs = _buildTabs(widget.user);
+    // Lấy danh sách tab theo vai trò; truyền callback để tab Thông báo
+    // báo lại khi số chưa đọc thay đổi, và callback điều hướng cho Dashboard.
+    final tabs = _buildTabs(widget.user, _refreshUnread, _goToTabId);
 
     return Scaffold(
-      appBar: AppBar(title: Text(tabs[_currentIndex].label)),
+      appBar: AppBar(
+        title: Text(tabs[_currentIndex].label),
+        // Phụ huynh: hiện nút đổi con ở góc phải AppBar (Switch Profile).
+        actions: [
+          if (widget.user.role == 'Parent') const ChildSwitcher(),
+        ],
+      ),
       // IndexedStack: giữ nguyên trạng thái mọi tab, chỉ hiện tab đang chọn.
       body: IndexedStack(
         index: _currentIndex,
@@ -97,51 +145,80 @@ class _MainShellState extends State<_MainShell> {
         type: BottomNavigationBarType.fixed, // >3 tab vẫn hiện đủ chữ
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textGrey,
-        onTap: (i) => setState(() => _currentIndex = i), // đổi tab
+        onTap: (i) {
+          setState(() => _currentIndex = i); // đổi tab
+          _refreshUnread(); // đổi tab → cập nhật lại badge cho chắc
+        },
         items: tabs
-            .map((t) => BottomNavigationBarItem(icon: Icon(t.icon), label: t.label))
+            .map((t) => BottomNavigationBarItem(
+                  // Nếu là tab Thông báo và có chưa đọc → bọc icon bằng Badge.
+                  icon: (t.id == 'notifications' && _unreadCount > 0)
+                      ? Badge.count(count: _unreadCount, child: Icon(t.icon))
+                      : Icon(t.icon),
+                  label: t.label,
+                ))
             .toList(),
       ),
     );
   }
 }
 
-/// _TabItem: mô tả 1 tab (icon + nhãn + nội dung).
+/// _TabItem: mô tả 1 tab (icon + nhãn + nội dung + id nhận diện).
 class _TabItem {
   final IconData icon;
   final String label;
   final Widget body;
-  _TabItem({required this.icon, required this.label, required this.body});
+  final String? id; // dùng để nhận diện tab đặc biệt (vd 'notifications')
+  _TabItem({required this.icon, required this.label, required this.body, this.id});
 }
 
 /// Trả về danh sách tab tùy theo vai trò user.
-List<_TabItem> _buildTabs(UserModel user) {
+///
+/// Nhận:
+///   - [user]: user đang đăng nhập (quyết định bộ tab).
+///   - [onUnreadChanged]: callback để tab Thông báo báo cập nhật badge.
+///   - [onNavigateTab]: callback để Dashboard nhờ chuyển sang tab khác.
+List<_TabItem> _buildTabs(
+  UserModel user,
+  VoidCallback onUnreadChanged,
+  void Function(String tabId) onNavigateTab,
+) {
   final home = _TabItem(
-      icon: Icons.home, label: 'Trang chủ', body: const _Placeholder(title: 'Trang chủ'));
+      id: 'home',
+      icon: Icons.home,
+      label: 'Trang chủ',
+      body: DashboardTab(user: user, onNavigateTab: onNavigateTab));
   final noti = _TabItem(
-      icon: Icons.notifications, label: 'Thông báo', body: const _Placeholder(title: 'Thông báo'));
-  final profile = _TabItem(icon: Icons.person, label: 'Hồ sơ', body: _ProfileTab(user: user));
+      id: 'notifications',
+      icon: Icons.notifications,
+      label: 'Thông báo',
+      body: NotificationTab(onUnreadChanged: onUnreadChanged));
+  final profile = _TabItem(
+      id: 'profile',
+      icon: Icons.person,
+      label: 'Hồ sơ',
+      body: _ProfileTab(user: user));
 
   switch (user.role) {
     case 'Teacher':
     case 'HeadOfDept':
       return [
         home,
-        _TabItem(icon: Icons.class_, label: 'Lớp học', body: const _Placeholder(title: 'Lớp học')),
+        _TabItem(id: 'class', icon: Icons.class_, label: 'Lớp học', body: const _Placeholder(title: 'Lớp học')),
         noti,
         profile,
       ];
     case 'Admin':
       return [
         home,
-        _TabItem(icon: Icons.manage_accounts, label: 'Quản lý', body: const _Placeholder(title: 'Quản lý')),
-        _TabItem(icon: Icons.bar_chart, label: 'Báo cáo', body: const _Placeholder(title: 'Báo cáo')),
+        _TabItem(id: 'manage', icon: Icons.manage_accounts, label: 'Quản lý', body: const _Placeholder(title: 'Quản lý')),
+        _TabItem(id: 'report', icon: Icons.bar_chart, label: 'Báo cáo', body: const _Placeholder(title: 'Báo cáo')),
         profile,
       ];
     default: // Parent, Student
       return [
         home,
-        _TabItem(icon: Icons.article, label: 'Bảng tin', body: const _Placeholder(title: 'Bảng tin')),
+        _TabItem(id: 'announcements', icon: Icons.article, label: 'Bảng tin', body: const AnnouncementTab()),
         noti,
         profile,
       ];
@@ -342,7 +419,9 @@ class _ProfileTabState extends State<_ProfileTab> {
           const SizedBox(height: 12),
           ElevatedButton.icon(
             onPressed: () async {
+              await PushService.instance.unregister(); // ngừng nhận push
               await AuthController().logout();
+              ParentSession.instance.clear(); // xóa danh sách con đã chọn
               if (context.mounted) context.go('/login');
             },
             icon: const Icon(Icons.logout),

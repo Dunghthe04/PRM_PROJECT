@@ -37,4 +37,22 @@ class UserModel {
       role: json['role'] as String,
     );
   }
+
+  /// Nhãn vai trò bằng tiếng Việt để hiển thị (role gốc là tiếng Anh).
+  String get roleLabel {
+    switch (role) {
+      case 'Admin':
+        return 'Quản trị viên';
+      case 'HeadOfDept':
+        return 'Trưởng bộ môn';
+      case 'Teacher':
+        return 'Giáo viên';
+      case 'Parent':
+        return 'Phụ huynh';
+      case 'Student':
+        return 'Học sinh';
+      default:
+        return role;
+    }
+  }
 }

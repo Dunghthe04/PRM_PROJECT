@@ -76,7 +76,7 @@ class _LoginViewState extends State<LoginView> {
   }
 
   /// Kiểm tra phiên bản lúc mở app.
-  /// Nhận: không tham số. Trả về: Future<void> (không trả dữ liệu, chỉ tạo tác dụng phụ).
+  /// Nhận: không tham số. Trả về: `Future<void>` (không trả dữ liệu, chỉ tạo tác dụng phụ).
   /// Luồng: gọi API lấy version → nếu app quá cũ thì bật dialog bắt cập nhật.
   Future<void> _checkVersion() async {
     // fetchVersion trả VersionInfo? — null nghĩa là lỗi mạng, bỏ qua.

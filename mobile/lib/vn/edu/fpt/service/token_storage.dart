@@ -9,7 +9,7 @@ class TokenStorage {
   static const String _keyToken = 'jwt_token';
 
   /// Lưu token sau khi đăng nhập thành công.
-  /// Future<void> = hàm bất đồng bộ, không trả về giá trị.
+  /// `Future<void>` = hàm bất đồng bộ, không trả về giá trị.
   static Future<void> saveToken(String token) async{
      await _storage.write(key: _keyToken, value: token);
   }

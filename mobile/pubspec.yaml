@@ -38,6 +38,8 @@ dependencies:
   go_router: ^17.3.0
   #Kho lưu trữ an toàn (mã hóa) để cất JWT tokeb thay vì lưu thô
   flutter_secure_storage: ^9.2.2
+  firebase_core: ^4.12.1
+  firebase_messaging: ^16.4.3
 
 dev_dependencies:
   flutter_test:

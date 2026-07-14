@@ -1,11 +1,32 @@
+import 'package:firebase_core/firebase_core.dart'; // Khởi tạo Firebase
+import 'package:firebase_messaging/firebase_messaging.dart'; // Push (FCM)
 import 'package:flutter/material.dart'; // Thư viện Material (widget, MaterialApp...)
 import 'package:go_router/go_router.dart'; // Package điều hướng trang (routing)
 import 'package:mobile_app/vn/edu/fpt/view/login_view.dart';
 import 'vn/edu/fpt/common/app_theme.dart'; // Theme cam vừa tạo
+import 'vn/edu/fpt/service/push_service.dart'; // Dịch vụ push + key SnackBar
 import 'vn/edu/fpt/view/home_view.dart'; // Màn hình Home
 
+/// Xử lý message khi app ở NỀN hoặc ĐÃ TẮT.
+/// Phải là hàm top-level + @pragma('vm:entry-point') để chạy nền được.
+/// Lúc này hệ thống Android tự hiện notification, ta không cần làm gì thêm.
+@pragma('vm:entry-point')
+Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
+  // Có thể xử lý dữ liệu ngầm ở đây nếu cần.
+}
+
 /// main() là điểm bắt đầu chạy của MỌI app Dart/Flutter.
-void main() {
+/// async vì phải chờ khởi tạo Firebase trước khi chạy app.
+void main() async {
+  // Bắt buộc gọi trước khi dùng plugin native trong main().
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Khởi tạo Firebase (đọc cấu hình từ google-services.json).
+  await Firebase.initializeApp();
+
+  // Đăng ký handler nhận push khi app ở nền/tắt.
+  FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+
   runApp(const MyApp()); // Khởi động app, vẽ widget MyApp lên màn hình
 }
 
@@ -24,6 +45,8 @@ class MyApp extends StatelessWidget {
       title: 'FSchool', // Tên app (hiện ở trình quản lý app của HĐH)
       debugShowCheckedModeBanner: false, // Ẩn dải chữ "DEBUG" góc phải
       theme: AppTheme.light, // Áp theme cam cho toàn app
+      // Key toàn cục để hiện SnackBar từ callback push (foreground).
+      scaffoldMessengerKey: scaffoldMessengerKey,
       routerConfig: _router, // Cấu hình điều hướng (khai báo bên dưới)
     );
   }

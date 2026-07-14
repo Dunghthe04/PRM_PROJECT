@@ -79,6 +79,28 @@ class AccountController {
       return (false, _extractError(e));
     }
   }
+  /// Lấy danh sách con của phụ huynh đang đăng nhập (GET /account/children).
+  /// Phục vụ Switch Profile (FR2.1).
+  ///
+  /// Nhận: không tham số.
+  /// Trả về `(List<UserModel>?, String?)`:
+  ///   - (danh sách con, null) nếu thành công.
+  ///   - (null, lỗi)           nếu thất bại.
+  Future<(List<UserModel>?, String?)> getChildren() async {
+    try {
+      final response = await _apiClient.dio.get('/account/children');
+      if (response.statusCode == 200) {
+        final list = (response.data as List)
+            .map((e) => UserModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+        return (list, null);
+      }
+      return (null, 'Không tải được danh sách con (mã ${response.statusCode}).');
+    } on DioException catch (e) {
+      return (null, _extractError(e));
+    }
+  }
+
   /// Bóc thông báo lỗi từ response API để hiển thị cho user.
   ///
   /// Nhận: [e] — ngoại lệ Dio (chứa response lỗi nếu có).

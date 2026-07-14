@@ -108,6 +108,21 @@ public class AccountController : ControllerBase
         return Ok(new MessageResponseDto { Message = message });
     }
 
+    /// <summary>
+    /// Danh sách con của phụ huynh đang đăng nhập (FR2.1 — Switch Profile).
+    /// Chỉ Parent gọi được.
+    /// </summary>
+    [HttpGet("children")]
+    [Authorize(Roles = "Parent")]
+    public async Task<IActionResult> GetChildren()
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized();
+
+        var children = await _accountService.GetChildrenAsync(userId.Value);
+        return Ok(children);
+    }
+
     /// <summary>Đọc userId từ claim NameIdentifier trong JWT hiện tại.</summary>
     private int? GetCurrentUserId()
     {
