@@ -15,6 +15,8 @@ mobile/macos/Pods/
 # .NET / Visual Studio
 api/bin/
 api/obj/
+api/**/bin/
+api/**/obj/
 api/.vs/
 **/.vs/
 api/Properties/launchSettings.json
