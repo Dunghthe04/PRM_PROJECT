@@ -4,7 +4,7 @@
 **Nền tảng mục tiêu:** 
 - Mobile App (Android / iOS): Dành cho Học sinh, Phụ huynh, Giáo viên.
 - Web Portal (PC): Dành cho Quản trị viên.
-**Phiên bản tài liệu:** 1.2
+**Phiên bản tài liệu:** 1.3
 
 ---
 
@@ -58,7 +58,7 @@ Hệ thống được chia thành 6 phân hệ nghiệp vụ chính:
     *   Xem lịch sử thanh toán và biên lai điện tử.
 
 ### Phân hệ 3: Dành cho Giáo viên (Teacher Dashboard - Mobile App)
-*   **FR3.1 - Điểm danh thông minh:** Hiển thị danh sách lớp. Cho phép thao tác điểm danh nhanh: Có mặt (P), Vắng mặt (A), Đi muộn (L). *Hỗ trợ điểm danh Offline và tự động đồng bộ khi có mạng.*
+*   **FR3.1 - Điểm danh thông minh:** Hiển thị danh sách lớp. Cho phép thao tác điểm danh nhanh: Có mặt (P), Vắng mặt (A), Đi muộn (L). *(Online-only — không hỗ trợ offline/SQLite.)*
 *   **FR3.2 - (ĐÃ CHUYỂN SANG ADMIN):** ~~Nhập điểm số~~ không còn thuộc Giáo viên. Việc nhập/quản lý điểm số do Admin thực hiện (insert vào DB) — xem **FR5.6**. HS/PH vẫn xem điểm bình thường (FR2.3).
 *   **FR3.3 - Quản lý Đơn từ:** Nhận, xem xét đơn xin nghỉ của học sinh và thao tác Duyệt (Approve) / Từ chối (Reject). Hệ thống tự bắn thông báo kết quả cho HS/PH.
 *   **FR3.4 - Gửi Thông báo Lớp:** Soạn thảo văn bản, đính kèm tài liệu và gửi Push Notification (1 chiều) đến toàn bộ phụ huynh/học sinh thuộc lớp mình phụ trách.
@@ -69,12 +69,12 @@ Hệ thống được chia thành 6 phân hệ nghiệp vụ chính:
 *   **FR4.2 - Tích hợp & Đối soát:** Quản lý cấu hình API Key của **VNPay** và **PayOS**. Theo dõi, đối soát trạng thái giao dịch (Thành công, Thất bại, Chờ thanh toán) thông qua Webhook.
 
 ### Phân hệ 5: Dành cho Quản trị viên (Web Portal)
-*   **FR5.1 - Quản lý Người dùng (Admin):** Thêm, Sửa, Xóa, Khóa tài khoản. Hỗ trợ Reset mật khẩu, Import tài khoản hàng loạt bằng file Excel.
+*   **FR5.1 - Quản lý Người dùng (Admin):** Thêm, Sửa, Khóa/Mở tài khoản, Reset mật khẩu. *(~~Import Excel~~ — bỏ, không làm trên app.)*
 *   **FR5.2 - Quản lý Danh mục (Admin):** Quản lý thực thể lõi: Khối, Lớp học, Môn học, Kỳ học.
-*   **FR5.3 - Phân công Giảng dạy:** Gán Giáo viên vào Lớp học và Môn học. Quản lý luân chuyển giáo viên.
+*   **FR5.3 - Phân công Giảng dạy + TKB:** Gán Giáo viên vào Lớp/Môn và dựng Thời khóa biểu — **thực hiện bằng insert DB / seeder** (không dựng màn Admin trên app). HS/PH vẫn xem TKB (FR2.3).
 *   **FR5.4 - Bảng tin Toàn trường (Global Newsfeed):** Đăng tải thông báo quan trọng (Lịch nghỉ lễ, sự kiện) đến toàn bộ thiết bị App.
-*   **FR5.5 - Báo cáo & Thống kê:** Xuất file Excel/PDF các báo cáo: Bảng điểm toàn trường/lớp, Tỷ lệ chuyên cần, Tình trạng đóng học phí.
-*   **FR5.6 - Quản lý Điểm số (Admin):** Nhập/quản lý điểm số học sinh theo loại đầu điểm (Assessment Type), lưu nháp và Công bố (Publish) để gửi thông báo đến HS/PH. (Thao tác insert vào DB.)
+*   **FR5.5 - Báo cáo & Thống kê:** Xem trên màn hình các báo cáo tổng hợp: Bảng điểm toàn trường/lớp, Tỷ lệ chuyên cần, Tình trạng đóng học phí. *(Không xuất Excel/PDF trên app — không phù hợp thao tác điện thoại.)*
+*   **FR5.6 - Quản lý Điểm số:** Nhập/công bố điểm — **thực hiện bằng insert DB / seeder** (không dựng màn trên app). HS/PH vẫn xem điểm (FR2.3).
 
 ---
 
@@ -88,7 +88,7 @@ Hệ thống được chia thành 6 phân hệ nghiệp vụ chính:
 ### 4.2. Hiệu năng hệ thống (Performance)
 *   Thời gian phản hồi API cho các thao tác quan trọng (Điểm danh, Nhập điểm) < 2 giây.
 *   **Lazy Loading / Phân trang:** Áp dụng bắt buộc cho các danh sách dài (Bảng tin, Danh sách học sinh, Lịch sử thông báo, Lịch sử giao dịch).
-*   **Offline Support:** Chức năng Thời khóa biểu và Điểm danh cho giáo viên cần được cache dữ liệu cục bộ (Local Storage/SQLite) để thao tác khi không có mạng.
+*   **~~Offline Support~~:** Đã bỏ — app hoạt động online; không cache SQLite cho TKB/Điểm danh.
 
 ### 4.3. Bảo mật & Tính toàn vẹn (Security & Integrity)
 *   **Bảo mật luồng thanh toán:** Toàn bộ giao dịch tài chính phải được thực hiện qua giao thức HTTPS, xác thực chữ ký số (Checksum/Signature) từ VNPay/PayOS để chống giả mạo giao dịch. Không lưu trữ thông tin thẻ ngân hàng của người dùng trên hệ thống FSchool.

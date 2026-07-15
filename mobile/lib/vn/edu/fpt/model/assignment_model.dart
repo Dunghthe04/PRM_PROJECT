@@ -22,6 +22,9 @@ class AssignmentModel {
   /// Trạng thái phía HS: "ToDo" | "Done" | "Overdue" (null khi GV xem DS lớp).
   final String? status;
 
+  /// Số bài đã nộp (chỉ có khi GV xem DS lớp — SubmissionCount từ API).
+  final int submissionCount;
+
   AssignmentModel({
     required this.id,
     required this.title,
@@ -36,6 +39,7 @@ class AssignmentModel {
     required this.subjectCode,
     required this.teacherName,
     this.status,
+    this.submissionCount = 0,
   });
 
   /// Nhãn tiếng Việt cho trạng thái bài tập.
@@ -69,6 +73,7 @@ class AssignmentModel {
       subjectCode: json['subjectCode'] as String? ?? '',
       teacherName: json['teacherName'] as String? ?? '',
       status: json['status'] as String?,
+      submissionCount: json['submissionCount'] as int? ?? 0,
     );
   }
 }

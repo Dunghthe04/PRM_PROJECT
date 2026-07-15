@@ -152,6 +152,18 @@ class _DashboardTabState extends State<DashboardTab> {
               icon: Icons.checklist,
               label: 'Điểm danh',
               onTap: () => widget.onNavigateTab('class')),
+          _ActionCard(
+              icon: Icons.assignment,
+              label: 'Bài tập',
+              onTap: () => widget.onNavigateTab('class')),
+          _ActionCard(
+              icon: Icons.event_busy,
+              label: 'Duyệt đơn',
+              onTap: () => widget.onNavigateTab('class')),
+          _ActionCard(
+              icon: Icons.campaign,
+              label: 'Gửi TB',
+              onTap: () => widget.onNavigateTab('class')),
         ];
       case 'Admin':
         return [

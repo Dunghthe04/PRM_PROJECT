@@ -4,9 +4,12 @@ import '../controller/teacher_controller.dart';
 import '../model/teacher_class_model.dart';
 import '../model/user_model.dart';
 import 'attendance_entry_view.dart';
+import 'teacher_announce_view.dart';
+import 'teacher_assignment_view.dart';
+import 'teacher_leave_view.dart';
 
-/// Tab "Lớp học" cho Giáo viên (FR3.1, FR3.2).
-/// Liệt kê lớp+môn được phân công; mỗi lớp có 2 lối tắt: Nhập điểm & Điểm danh.
+/// Tab "Lớp học" cho Giáo viên (FR3.1, FR3.3, FR3.4, FR3.5).
+/// Mỗi lớp+môn: Điểm danh · Bài tập · Duyệt đơn · Gửi TB.
 class TeacherClassTab extends StatefulWidget {
   final UserModel user;
   const TeacherClassTab({super.key, required this.user});
@@ -81,7 +84,7 @@ class _TeacherClassTabState extends State<TeacherClassTab> {
   }
 }
 
-/// Thẻ 1 lớp+môn với 2 nút hành động.
+/// Thẻ 1 lớp+môn với 4 lối tắt nghiệp vụ GV.
 class _ClassCard extends StatelessWidget {
   final TeacherClassModel item;
   const _ClassCard({required this.item});
@@ -118,18 +121,72 @@ class _ClassCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AttendanceEntryView(teacherClass: item),
+            // Hàng 1: Điểm danh + Bài tập
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            AttendanceEntryView(teacherClass: item),
+                      ),
+                    ),
+                    icon: const Icon(Icons.checklist, size: 18),
+                    label: const Text('Điểm danh'),
                   ),
                 ),
-                icon: const Icon(Icons.checklist),
-                label: const Text('Điểm danh'),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            TeacherAssignmentListPage(teacherClass: item),
+                      ),
+                    ),
+                    icon: const Icon(Icons.assignment, size: 18),
+                    label: const Text('Bài tập'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Hàng 2: Duyệt đơn + Gửi TB
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TeacherLeaveReviewPage(
+                          classId: item.classId,
+                          className: item.className,
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.event_busy, size: 18),
+                    label: const Text('Đơn nghỉ'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            TeacherAnnouncePage(teacherClass: item),
+                      ),
+                    ),
+                    icon: const Icon(Icons.campaign, size: 18),
+                    label: const Text('Gửi TB'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

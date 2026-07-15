@@ -35,4 +35,51 @@ class AnnouncementController {
       return (null, 'Lỗi kết nối: ${e.message}');
     }
   }
+
+  // ─── Phần dành cho GIÁO VIÊN / ADMIN (FR3.4, FR5.4) ────────────────────────
+
+  /// Soạn & gửi thông báo (kèm push) — POST /announcements.
+  ///
+  /// Nhận:
+  ///   - [title], [content]: nội dung thông báo.
+  ///   - [type]: "Class" (theo lớp) | "Global" (toàn trường — chỉ Admin).
+  ///   - [targetClassId]: bắt buộc khi type = "Class".
+  ///   - [sendPush]: có gửi push notification không (mặc định true).
+  /// Trả về `(int?, String?)`: (số người được thông báo, null) hoặc (null, lỗi).
+  Future<(int?, String?)> create({
+    required String title,
+    required String content,
+    required String type,
+    int? targetClassId,
+    bool sendPush = true,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post('/announcements', data: {
+        'title': title,
+        'content': content,
+        'type': type,
+        'targetClassId': targetClassId,
+        'sendPush': sendPush,
+      });
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data;
+        final count = (data is Map && data['notifiedUserCount'] is int)
+            ? data['notifiedUserCount'] as int
+            : 0;
+        return (count, null);
+      }
+      // 400 từ service: { message: "..." }; binding lỗi: format khác.
+      final data = response.data;
+      if (data is Map && data['message'] is String) {
+        return (null, data['message'] as String);
+      }
+      return (null, 'Gửi thông báo thất bại (mã ${response.statusCode}).');
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      if (data is Map && data['message'] is String) {
+        return (null, data['message'] as String);
+      }
+      return (null, 'Lỗi kết nối: ${e.message}');
+    }
+  }
 }

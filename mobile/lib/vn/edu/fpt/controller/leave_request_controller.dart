@@ -89,6 +89,64 @@ class LeaveRequestController {
     }
   }
 
+  // ─── Phần dành cho GIÁO VIÊN (FR3.3) ──────────────────────────────────────
+
+  /// GV lấy DS đơn xin nghỉ — GET /leave-requests?classId=&status=.
+  ///
+  /// Nhận: [classId] (tùy chọn), [status] "Pending"|"Approved"|"Rejected" (tùy chọn).
+  Future<(List<LeaveRequestModel>?, String?)> getList({
+    int? classId,
+    String? status,
+  }) async {
+    try {
+      final query = <String, dynamic>{};
+      if (classId != null) query['classId'] = classId;
+      if (status != null) query['status'] = status;
+
+      final response = await _apiClient.dio.get(
+        '/leave-requests',
+        queryParameters: query.isEmpty ? null : query,
+      );
+      if (response.statusCode == 200) {
+        final list = (response.data as List)
+            .map((e) => LeaveRequestModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+        return (list, null);
+      }
+      return (null, 'Không tải được đơn (mã ${response.statusCode}).');
+    } on DioException catch (e) {
+      return (null, _extractError(e));
+    }
+  }
+
+  /// GV duyệt đơn — PUT /leave-requests/{id}/approve.
+  /// Trả về `(bool, String)`: (thành công?, thông báo).
+  Future<(bool, String)> approve(int id) async {
+    try {
+      final response = await _apiClient.dio.put('/leave-requests/$id/approve');
+      if (response.statusCode == 200) return (true, 'Đã duyệt đơn.');
+      return (false, 'Duyệt đơn thất bại (mã ${response.statusCode}).');
+    } on DioException catch (e) {
+      return (false, _extractError(e));
+    }
+  }
+
+  /// GV từ chối đơn — PUT /leave-requests/{id}/reject.
+  ///
+  /// Nhận: [id], [reason] — lý do từ chối (tùy chọn).
+  Future<(bool, String)> reject(int id, {String? reason}) async {
+    try {
+      final response = await _apiClient.dio.put(
+        '/leave-requests/$id/reject',
+        data: {'rejectionReason': reason},
+      );
+      if (response.statusCode == 200) return (true, 'Đã từ chối đơn.');
+      return (false, 'Từ chối đơn thất bại (mã ${response.statusCode}).');
+    } on DioException catch (e) {
+      return (false, _extractError(e));
+    }
+  }
+
   String _extractError(DioException e) {
     final data = e.response?.data;
     if (data is Map && data['message'] is String) return data['message'];
