@@ -18,7 +18,7 @@ Monorepo gồm Mobile App (Flutter) + Backend API (.NET 8). Tài liệu gốc: [
 
 # 🗺️ TIMELINE THỰC HIỆN (theo ngày — phủ 100% SRS)
 
-> **👉 VỊ TRÍ HIỆN TẠI: Cuối NGÀY 19.** Tiếp theo Ngày 20 — Admin: Tài chính, Bảng tin toàn trường, Báo cáo (xem trên màn).
+> **👉 VỊ TRÍ HIỆN TẠI: Cuối NGÀY 20.** Tiếp theo Ngày 21 — Hiệu năng (phân trang / lazy load + rà API).
 
 Ký hiệu: ✅ xong · 🟡 đang làm · ⬜ chưa làm. "Ngày" = 1 buổi làm tập trung, tự map vào lịch thật.
 Mỗi ngày kết thúc bằng **chạy thử + commit**.
@@ -135,10 +135,10 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 - [x] ~~Nhập điểm (FR5.6)~~ → **BỎ UI** — insert DB / seeder
 - [x] ~~Phân công GV (FR5.3) + dựng TKB~~ → **BỎ UI** — insert DB / seeder
 
-### NGÀY 20 — Tài chính, Bảng tin, Báo cáo (FR4.1, FR4.2, FR5.4, FR5.5)
-- [ ] Màn Khoản thu/đợt thu + cấu hình API key VNPay/PayOS + đối soát (FR4.1, FR4.2)
-- [ ] Đăng thông báo toàn trường (FR5.4)
-- [ ] Dashboard báo cáo **xem trên màn** (JSON): bảng điểm / chuyên cần / học phí (FR5.5)
+### ✅ NGÀY 20 — Tài chính, Bảng tin, Báo cáo (FR4.1, FR4.2, FR5.4, FR5.5)
+- [x] Màn Khoản thu / hóa đơn (batch theo lớp) + cấu hình VNPay/PayOS + lịch sử GD (FR4.1, FR4.2)
+- [x] Đăng thông báo toàn trường (FR5.4)
+- [x] Dashboard báo cáo **xem trên màn** (JSON): tổng quan + điểm / chuyên cần / học phí (FR5.5)
 - [x] ~~Xuất Excel/PDF~~ → **BỎ** (không phù hợp app điện thoại)
 
 ---
@@ -175,7 +175,7 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 
 ---
 
-## 👉 HÔM NAY LÀM GÌ (Ngày 20 — Admin: Tài chính, Bảng tin, Báo cáo)
-1. Màn Khoản thu / hóa đơn + cấu hình VNPay/PayOS + đối soát.
-2. Đăng thông báo toàn trường.
-3. Dashboard báo cáo xem trên màn (điểm / chuyên cần / học phí).
+## 👉 HÔM NAY LÀM GÌ (Ngày 21 — Hiệu năng)
+1. Phân trang / Lazy loading danh sách dài (NFR4.2).
+2. Rà thời gian phản hồi API < 2s (điểm danh, TKB, tra cứu điểm).
+3. ~~Offline~~ đã bỏ.

@@ -4,11 +4,13 @@ import '../common/app_colors.dart';
 import '../controller/auth_controller.dart';
 import '../model/user_model.dart';
 import '../service/push_service.dart';
+import 'admin_announce_view.dart';
 import 'admin_catalog_view.dart';
+import 'admin_finance_view.dart';
+import 'admin_reports_view.dart';
 import 'admin_users_view.dart';
 
-/// Shell Admin (Ngày 19): sidebar khi màn rộng, Drawer khi hẹp.
-/// Menu Day 19: Người dùng · Danh mục. Day 20 sẽ thêm Tài chính / TB / Báo cáo.
+/// Shell Admin (Ngày 19–20): sidebar khi màn rộng, Drawer khi hẹp.
 class AdminShell extends StatefulWidget {
   final UserModel user;
   const AdminShell({super.key, required this.user});
@@ -24,9 +26,9 @@ class _AdminShellState extends State<AdminShell> {
   static const _items = <_NavItem>[
     _NavItem('Người dùng', Icons.manage_accounts, _AdminSection.users),
     _NavItem('Danh mục', Icons.category, _AdminSection.catalog),
-    _NavItem('Tài chính', Icons.payments, _AdminSection.todoFinance),
-    _NavItem('Bảng tin', Icons.campaign, _AdminSection.todoAnnounce),
-    _NavItem('Báo cáo', Icons.bar_chart, _AdminSection.todoReport),
+    _NavItem('Tài chính', Icons.payments, _AdminSection.finance),
+    _NavItem('Bảng tin', Icons.campaign, _AdminSection.announce),
+    _NavItem('Báo cáo', Icons.bar_chart, _AdminSection.reports),
   ];
 
   Widget _bodyFor(_AdminSection section) {
@@ -35,15 +37,12 @@ class _AdminShellState extends State<AdminShell> {
         return const AdminUsersPage();
       case _AdminSection.catalog:
         return const AdminCatalogPage();
-      case _AdminSection.todoFinance:
-        return const _TodoPane(
-            title: 'Tài chính', hint: 'Sẽ làm ở Ngày 20 (khoản thu, PayOS…).');
-      case _AdminSection.todoAnnounce:
-        return const _TodoPane(
-            title: 'Bảng tin toàn trường', hint: 'Sẽ làm ở Ngày 20.');
-      case _AdminSection.todoReport:
-        return const _TodoPane(
-            title: 'Báo cáo', hint: 'Sẽ làm ở Ngày 20 (xem trên màn).');
+      case _AdminSection.finance:
+        return const AdminFinancePage();
+      case _AdminSection.announce:
+        return const AdminAnnouncePage();
+      case _AdminSection.reports:
+        return const AdminReportsPage();
     }
   }
 
@@ -156,33 +155,11 @@ class _AdminShellState extends State<AdminShell> {
   }
 }
 
-enum _AdminSection { users, catalog, todoFinance, todoAnnounce, todoReport }
+enum _AdminSection { users, catalog, finance, announce, reports }
 
 class _NavItem {
   final String label;
   final IconData icon;
   final _AdminSection section;
   const _NavItem(this.label, this.icon, this.section);
-}
-
-class _TodoPane extends StatelessWidget {
-  final String title;
-  final String hint;
-  const _TodoPane({required this.title, required this.hint});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.construction, size: 48, color: AppColors.textGrey),
-          const SizedBox(height: 12),
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text(hint, style: const TextStyle(color: AppColors.textGrey)),
-        ],
-      ),
-    );
-  }
 }
