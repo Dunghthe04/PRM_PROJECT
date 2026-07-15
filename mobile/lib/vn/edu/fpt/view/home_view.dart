@@ -12,6 +12,7 @@ import 'child_switcher.dart';
 import 'dashboard_view.dart';
 import 'notification_view.dart';
 import 'study_view.dart';
+import 'teacher_class_view.dart';
 
 /// HomeView: sau login, tải hồ sơ (/account/me) rồi dựng khung chính.
 class HomeView extends StatefulWidget {
@@ -202,10 +203,9 @@ List<_TabItem> _buildTabs(
 
   switch (user.role) {
     case 'Teacher':
-    case 'HeadOfDept':
       return [
         home,
-        _TabItem(id: 'class', icon: Icons.class_, label: 'Lớp học', body: const _Placeholder(title: 'Lớp học')),
+        _TabItem(id: 'class', icon: Icons.class_, label: 'Lớp học', body: TeacherClassTab(user: user)),
         noti,
         profile,
       ];

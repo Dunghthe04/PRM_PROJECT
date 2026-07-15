@@ -63,7 +63,7 @@ public class TeacherAssignmentService : ITeacherAssignmentService
     }
 
     /// <summary>
-    /// Tạo phân công — Teacher phải role Teacher/HeadOfDept,
+    /// Tạo phân công — Teacher phải role Teacher,
     /// Class + Subject tồn tại, không trùng (Class + Subject).
     /// </summary>
     public async Task<(TeacherAssignmentDto? Result, string? Error)> CreateAsync(CreateUpdateTeacherAssignmentDto dto)
@@ -125,7 +125,7 @@ public class TeacherAssignmentService : ITeacherAssignmentService
         var teacher = await _userRepository.GetUserByIdAsync(teacherId);
         if (teacher == null) return (null, "Không tìm thấy giáo viên.");
 
-        if (teacher.Role is not (UserRole.Teacher or UserRole.HeadOfDept))
+        if (teacher.Role is not (UserRole.Teacher))
             return (null, "User này không phải giáo viên.");
 
         var items = await _assignmentRepository.GetByTeacherAsync(teacherId);
@@ -151,8 +151,8 @@ public class TeacherAssignmentService : ITeacherAssignmentService
         if (teacher == null)
             return "Không tìm thấy giáo viên.";
 
-        // HeadOfDept cũng có thể dạy; Admin không gán làm GV lớp
-        if (teacher.Role is not (UserRole.Teacher or UserRole.HeadOfDept))
+        // Admin không gán làm GV lớp
+        if (teacher.Role is not (UserRole.Teacher))
             return "User này không phải giáo viên.";
 
         var cls = await _classRepository.GetByIdAsync(dto.ClassId);

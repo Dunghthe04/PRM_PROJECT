@@ -8,12 +8,12 @@ namespace Api.Controllers;
 
 /// <summary>
 /// API báo cáo & thống kê (FR5.5 — Ngày 12 Bước 4).
-/// Admin / Trưởng bộ môn xem dashboard + xuất bảng điểm / chuyên cần / học phí.
+/// Admin xem dashboard + xuất bảng điểm / chuyên cần / học phí.
 /// format=json (mặc định) | excel | pdf.
 /// </summary>
 [ApiController]
 [Route("api/reports")]
-[Authorize(Roles = "Admin,HeadOfDept")]
+[Authorize(Roles = "Admin")]
 public class ReportsController : ControllerBase
 {
     private readonly IReportService _service;

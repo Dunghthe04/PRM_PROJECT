@@ -12,7 +12,7 @@ namespace Api.Services;
 /// </summary>
 public interface IAssignmentService
 {
-    /// <summary>DS bài tập theo lớp/môn (GV / Admin / HeadOfDept).</summary>
+    /// <summary>DS bài tập theo lớp/môn (GV / Admin).</summary>
     Task<(List<AssignmentDto>? Result, string? Error)> GetListAsync(
         AssignmentListQueryDto query, int actorId, UserRole actorRole);
 
@@ -32,7 +32,7 @@ public interface IAssignmentService
     Task<(AssignmentDto? Result, string? Error)> CreateAsync(
         CreateUpdateAssignmentDto dto, int teacherId, UserRole actorRole);
 
-    /// <summary>GV sửa bài tập (chỉ người tạo hoặc Admin/HeadOfDept).</summary>
+    /// <summary>GV sửa bài tập (chỉ người tạo hoặc Admin).</summary>
     Task<(AssignmentDto? Result, string? Error)> UpdateAsync(
         int id, CreateUpdateAssignmentDto dto, int actorId, UserRole actorRole);
 
@@ -89,7 +89,7 @@ public class AssignmentService : IAssignmentService
     public async Task<(List<AssignmentDto>? Result, string? Error)> GetListAsync(
         AssignmentListQueryDto query, int actorId, UserRole actorRole)
     {
-        if (actorRole is not (UserRole.Teacher or UserRole.Admin or UserRole.HeadOfDept))
+        if (actorRole is not (UserRole.Teacher or UserRole.Admin))
             return (null, "Không có quyền xem danh sách bài tập lớp.");
 
         // Teacher: nếu lọc theo class+subject thì kiểm tra phân công
@@ -101,7 +101,7 @@ public class AssignmentService : IAssignmentService
 
         var items = await _assignmentRepository.GetListAsync(query.ClassId, query.SubjectId);
 
-        // Teacher chỉ thấy bài mình tạo (trừ khi Admin/HeadOfDept)
+        // Teacher chỉ thấy bài mình tạo (trừ khi Admin)
         if (actorRole == UserRole.Teacher)
             items = items.Where(a => a.CreatedByTeacherId == actorId).ToList();
 
@@ -424,10 +424,10 @@ public class AssignmentService : IAssignmentService
         return null;
     }
 
-    /// <summary>Teacher chỉ sửa/xóa bài mình tạo; Admin/HeadOfDept được phép.</summary>
+    /// <summary>Teacher chỉ sửa/xóa bài mình tạo; Admin được phép.</summary>
     private static string? VerifyCanManageAssignment(Assignment assignment, int actorId, UserRole actorRole)
     {
-        if (actorRole is UserRole.Admin or UserRole.HeadOfDept)
+        if (actorRole is UserRole.Admin)
             return null;
 
         if (actorRole == UserRole.Teacher && assignment.CreatedByTeacherId == actorId)

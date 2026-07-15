@@ -64,7 +64,7 @@ public class TimetableController : ControllerBase
     /// GET /api/timetable/teacher?weekStart= — lịch dạy của GV đang đăng nhập.
     /// </summary>
     [HttpGet("teacher")]
-    [Authorize(Roles = "Teacher,HeadOfDept")]
+    [Authorize(Roles = "Teacher")]
     public async Task<IActionResult> GetTeacher([FromQuery] DateTime? weekStart = null)
     {
         var userId = GetCurrentUserId();
@@ -75,9 +75,9 @@ public class TimetableController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>POST /api/timetable — tạo tiết học (Admin / Trưởng bộ môn).</summary>
+    /// <summary>POST /api/timetable — tạo tiết học (Admin).</summary>
     [HttpPost]
-    [Authorize(Roles = "Admin,HeadOfDept")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create([FromBody] CreateUpdateTimetableSlotDto dto)
     {
         var (result, error) = await _service.CreateAsync(dto);
@@ -87,7 +87,7 @@ public class TimetableController : ControllerBase
 
     /// <summary>PUT /api/timetable/{id} — sửa tiết học.</summary>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "Admin,HeadOfDept")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Update(int id, [FromBody] CreateUpdateTimetableSlotDto dto)
     {
         var (result, error) = await _service.UpdateAsync(id, dto);
@@ -101,7 +101,7 @@ public class TimetableController : ControllerBase
 
     /// <summary>DELETE /api/timetable/{id} — xóa tiết học.</summary>
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = "Admin,HeadOfDept")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var (success, message) = await _service.DeleteAsync(id);

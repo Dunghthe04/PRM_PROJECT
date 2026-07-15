@@ -12,18 +12,18 @@ Monorepo gồm Mobile App (Flutter) + Backend API (.NET 8). Tài liệu gốc: [
 1. Bám sát [docs/SRS.md](docs/SRS.md) và cấu trúc thư mục đã thống nhất.
 2. Backend tuân thủ SOLID + pattern 3 lớp (mỗi nghiệp vụ: Model → DTO → Repository → Service → Controller).
 3. UI Flutter dùng màu thương hiệu: **Cam `#FF6B00`** + Trắng `#FFFFFF`. Bottom Navigation Bar đồng nhất.
-4. 5 vai trò RBAC: Admin, HeadOfDept, Teacher, Parent, Student.
+4. 4 vai trò RBAC: Admin, Teacher, Parent, Student. (Đã bỏ HeadOfDept theo phản hồi giảng viên — các thao tác nhập liệu/quản trị chỉ cần insert DB.)
 
 ---
 
 # 🗺️ TIMELINE THỰC HIỆN (theo ngày — phủ 100% SRS)
 
-> **👉 VỊ TRÍ HIỆN TẠI: Cuối NGÀY 16 (xong).** Tiếp theo Ngày 17 — Giáo viên: Điểm danh & Điểm số.
+> **👉 VỊ TRÍ HIỆN TẠI: Cuối NGÀY 17 (xong phần online).** Tiếp theo Ngày 18 — Giáo viên: Bài tập, Duyệt đơn, Gửi TB. (Offline điểm danh dời Ngày 21.)
 
 Ký hiệu: ✅ xong · 🟡 đang làm · ⬜ chưa làm. "Ngày" = 1 buổi làm tập trung, tự map vào lịch thật.
 Mỗi ngày kết thúc bằng **chạy thử + commit**.
 
-> 📱 **Quyết định kiến trúc (vì đây là môn App Mobile):** KHÔNG làm Web Portal riêng. **Tất cả 5 vai trò dùng chung 1 app Flutter.** Admin & Trưởng bộ môn dùng bản **Flutter Web/Desktop** (`flutter run -d chrome`) với layout rộng — cùng codebase, cùng API. Báo cáo ghi: *"Web Portal hiện thực bằng Flutter Web responsive"*.
+> 📱 **Quyết định kiến trúc (vì đây là môn App Mobile):** KHÔNG làm Web Portal riêng. **Cả 4 vai trò dùng chung 1 app Flutter.** Admin dùng bản **Flutter Web/Desktop** (`flutter run -d chrome`) với layout rộng — cùng codebase, cùng API. Báo cáo ghi: *"Web Portal hiện thực bằng Flutter Web responsive"*.
 
 > 📱 **Auth:** Đăng ký / đăng nhập bằng **SĐT + mật khẩu**. OTP chỉ gửi về **điện thoại** (xác thực đăng ký + quên MK). Dev: OTP log ra console (`[DEV OTP SMS]`).
 
@@ -47,7 +47,7 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 - [x] Xem/sửa hồ sơ, đổi mật khẩu, cập nhật avatar (FR1.3) — `/api/account/*`
 - [x] Quên mật khẩu qua OTP Email/SĐT (FR1.2) — `/api/auth/forgot|verify|reset`
 
-### ✅ NGÀY 4 — Danh mục + TKB + Phân công (FR5.2, FR5.3, FR2.3) · *Admin/Trưởng bộ môn*
+### ✅ NGÀY 4 — Danh mục + TKB + Phân công (FR5.2, FR5.3, FR2.3) · *Admin*
 - [x] CRUD Khối, Semester, Subject, Class; gán Student vào Class (FR5.2)
 - [x] Phân công giảng dạy TeacherAssignment (FR5.3)
 - [x] ➕ **Thêm entity `TimetableSlot` + migration** + API xem TKB theo tuần (FR2.3)
@@ -56,9 +56,9 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 - [x] CRUD user, Khóa/Mở tài khoản, Reset mật khẩu
 - [x] Import tài khoản hàng loạt từ file Excel
 
-### ✅ NGÀY 6 — Điểm số (FR3.2, FR2.3) · *GV / HS / PH / Trưởng bộ môn*
-- [x] Nhập điểm hàng loạt theo AssessmentType, cơ chế **Nháp → Publish**
-- [x] (tuỳ chọn) Trưởng bộ môn duyệt điểm; API xem bảng điểm cho HS/PH
+### ✅ NGÀY 6 — Điểm số (FR5.6, FR2.3) · *Admin (insert DB) / HS / PH*
+- [x] API nhập điểm hàng loạt theo AssessmentType, cơ chế **Nháp → Publish** (role **Admin**, không phải GV)
+- [x] (tuỳ chọn) Admin duyệt điểm; API xem bảng điểm cho HS/PH (FR2.3)
 
 ### ✅ NGÀY 7 — Điểm danh (FR3.1) · *GV / HS / PH*
 - [x] API điểm danh P/A/L theo lớp + ngày; API tra cứu chuyên cần
@@ -81,7 +81,7 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 - [x] Tích hợp **VNPay** + **PayOS** (tạo giao dịch + verify checksum/signature)
 - [x] Webhook đối soát giao dịch + biên lai điện tử (NFR: không lưu thông tin thẻ)
 
-### ✅ NGÀY 12 — Báo cáo & Thống kê (FR5.5) · *Admin / Trưởng bộ môn*
+### ✅ NGÀY 12 — Báo cáo & Thống kê (FR5.5) · *Admin*
 - [x] API tổng hợp: dashboard, bảng điểm, tỷ lệ chuyên cần, tình trạng học phí
 - [x] Xuất **Excel (ClosedXML) / PDF (QuestPDF)** — `?format=json|excel|pdf`
 
@@ -111,28 +111,31 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 - [x] Thanh toán học phí VNPay/PayOS + lịch sử + biên lai (FR2.6)
 - [x] Seed loại khoản thu + hóa đơn để test; hỗ trợ `dev/simulate-paid`
 
-### 🟡 NGÀY 17 — Giáo viên: Điểm danh & Điểm số (FR3.1, FR3.2)  ⬅️ LÀM TIẾP
-- [ ] Điểm danh nhanh P/A/L + **offline cache SQLite, tự đồng bộ khi có mạng** (FR3.1, NFR4.2)
-- [ ] Nhập điểm hàng loạt + Publish (FR3.2)
+### ✅ NGÀY 17 — Giáo viên: Điểm danh (FR3.1)
+- [x] Điểm danh nhanh P/A/L theo lớp + ngày (FR3.1, online-only)
+- [x] Tab "Lớp học" cho GV: chọn lớp → Điểm danh
+- [x] ~~Nhập điểm của GV~~ → **BỎ** (điểm do Admin insert DB — FR5.6; HS/PH vẫn xem được) — theo phản hồi giảng viên
+- [ ] ⏭️ Offline cache SQLite + tự đồng bộ (NFR4.2) → dời sang **Ngày 21**
 
-### NGÀY 18 — Giáo viên: Bài tập, Duyệt đơn, Gửi TB (FR3.5, FR3.3, FR3.4)
+### 🟡 NGÀY 18 — Giáo viên: Bài tập, Duyệt đơn, Gửi TB (FR3.5, FR3.3, FR3.4)  ⬅️ LÀM TIẾP
 - [ ] Tạo/sửa/xóa & chấm bài tập (FR3.5)
 - [ ] Duyệt/từ chối đơn nghỉ (FR3.3)
 - [ ] Soạn & gửi Push Notification cho lớp (FR3.4)
 
 ---
 
-## 🅒 GIAI ĐOẠN ADMIN/TRƯỞNG BỘ MÔN — màn trong app Flutter (Ngày 19–20)
+## 🅒 GIAI ĐOẠN ADMIN — màn trong app Flutter (Ngày 19–20)
 *(chạy bản Flutter Web/Desktop với layout rộng + sidebar; KHÔNG dựng project web riêng)*
 
 ### NGÀY 19 — Quản lý người dùng & Danh mục (FR5.1, FR5.2, FR5.3)
-- [ ] Layout admin (sidebar/rộng), điều hướng riêng cho role Admin/Trưởng bộ môn
+- [ ] Layout admin (sidebar/rộng), điều hướng riêng cho role Admin
 - [ ] Màn Quản lý người dùng: CRUD, khóa, reset MK, import Excel (FR5.1)
 - [ ] Màn quản lý Khối/Lớp/Môn/Kỳ + Phân công giảng dạy + dựng TKB (FR5.2, FR5.3, FR2.3)
+- [ ] Màn Nhập/quản lý điểm số (FR5.6) — Nháp → Publish (đã có API từ Ngày 6)
 
 ### NGÀY 20 — Tài chính, Bảng tin, Báo cáo (FR4.1, FR4.2, FR5.4, FR5.5)
 - [ ] Màn Khoản thu/đợt thu + cấu hình API key VNPay/PayOS + đối soát (FR4.1, FR4.2)
-- [ ] Đăng thông báo toàn trường (FR5.4) + (tuỳ chọn) Trưởng bộ môn duyệt điểm
+- [ ] Đăng thông báo toàn trường (FR5.4) + (tuỳ chọn) Admin duyệt điểm
 - [ ] Dashboard báo cáo + xuất Excel/PDF (FR5.5)
 
 ---
@@ -140,11 +143,11 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 ## 🅓 HOÀN THIỆN (Ngày 21–22) — Phi chức năng (NFR4)
 ### NGÀY 21 — Hiệu năng & trải nghiệm
 - [ ] Phân trang / Lazy loading mọi danh sách dài (NFR4.2)
-- [ ] Rà thời gian phản hồi API < 2s (Điểm danh, Nhập điểm)
+- [ ] Rà thời gian phản hồi API < 2s (Điểm danh, tra cứu điểm/TKB)
 - [ ] Kiểm tra offline cache (TKB + Điểm danh) hoạt động đúng
 
 ### NGÀY 22 — Kiểm thử & bảo mật toàn diện
-- [ ] Test end-to-end đủ 5 vai trò
+- [ ] Test end-to-end đủ 4 vai trò
 - [ ] Soát bảo mật: HTTPS, signature thanh toán, không lưu thẻ, JWT hết hạn (NFR4.3)
 - [ ] Sửa lỗi + chốt tài liệu
 
@@ -155,9 +158,8 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 |---|---|
 | Học sinh | 6,7,8,13–16 |
 | Phụ huynh | 9,11,13–16 (+Switch Profile N14) |
-| Giáo viên | 6,7,8,9,17,18 |
-| Trưởng bộ môn | 4,6,12,19,20 (app Flutter Web) |
-| Admin | 5,10,11,12,19,20 (app Flutter Web) |
+| Giáo viên | 7,8,9,17,18 (điểm danh, bài tập, đơn nghỉ, gửi TB) |
+| Admin | 4,5,6,10,11,12,19,20 (app Flutter Web + insert DB) |
 
 | Phân hệ FR | Ngày |
 |---|---|
@@ -165,11 +167,12 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 | FR2 (HS/PH) | 14,15,16 (API: 4,6,8,9,11) |
 | FR3 (Giáo viên) | 6,7,8,9,17,18 |
 | FR4 (Tài chính) | 11,20 |
-| FR5 (Admin/Trưởng bộ môn) | 4,5,12,19,20 |
+| FR5 (Admin) | 4,5,12,19,20 |
 | NFR (hiệu năng/bảo mật/offline/force-update) | 2,11,13,17,21,22 |
 
 ---
 
-## 👉 HÔM NAY LÀM GÌ (Ngày 17 — Giáo viên: Điểm danh & Điểm số)
-1. Điểm danh nhanh P/A/L theo lớp + offline cache SQLite, tự đồng bộ khi có mạng (FR3.1, NFR4.2).
-2. Nhập điểm hàng loạt + cơ chế Nháp → Publish (FR3.2).
+## 👉 HÔM NAY LÀM GÌ (Ngày 18 — Giáo viên: Bài tập, Duyệt đơn, Gửi TB)
+1. Tạo/sửa/xóa & chấm bài tập (FR3.5).
+2. Duyệt/từ chối đơn xin nghỉ (FR3.3).
+3. Soạn & gửi Push Notification cho lớp (FR3.4).

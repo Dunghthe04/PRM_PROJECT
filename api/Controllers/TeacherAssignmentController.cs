@@ -45,7 +45,7 @@ public class TeacherAssignmentController : ControllerBase
 
     /// <summary>POST /api/teacher-assignments — gán GV vào lớp + môn.</summary>
     [HttpPost("teacher-assignments")]
-    [Authorize(Roles = "Admin,HeadOfDept")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create([FromBody] CreateUpdateTeacherAssignmentDto dto)
     {
         var (result, error) = await _service.CreateAsync(dto);
@@ -55,7 +55,7 @@ public class TeacherAssignmentController : ControllerBase
 
     /// <summary>PUT /api/teacher-assignments/{id} — sửa / luân chuyển phân công.</summary>
     [HttpPut("teacher-assignments/{id:int}")]
-    [Authorize(Roles = "Admin,HeadOfDept")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Update(int id, [FromBody] CreateUpdateTeacherAssignmentDto dto)
     {
         var (result, error) = await _service.UpdateAsync(id, dto);
@@ -69,7 +69,7 @@ public class TeacherAssignmentController : ControllerBase
 
     /// <summary>DELETE /api/teacher-assignments/{id} — gỡ phân công.</summary>
     [HttpDelete("teacher-assignments/{id:int}")]
-    [Authorize(Roles = "Admin,HeadOfDept")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var (success, message) = await _service.DeleteAsync(id);

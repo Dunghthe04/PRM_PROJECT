@@ -7,7 +7,7 @@ namespace Api.Controllers;
 
 /// <summary>
 /// CRUD Môn học (FR5.2) — Ngày 4 Bước 2.
-/// Chỉ Admin / HeadOfDept được tạo-sửa-xóa; mọi user đã login được xem.
+/// Chỉ Admin được tạo-sửa-xóa; mọi user đã login được xem.
 /// </summary>
 [ApiController]
 [Route("api/subjects")]
@@ -39,7 +39,7 @@ public class SubjectController : ControllerBase
 
     /// <summary>POST /api/subjects — tạo môn mới.</summary>
     [HttpPost]
-    [Authorize(Roles = "Admin,HeadOfDept")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create([FromBody] CreateUpdateSubjectDto dto)
     {
         var (result, error) = await _service.CreateAsync(dto);
@@ -49,7 +49,7 @@ public class SubjectController : ControllerBase
 
     /// <summary>PUT /api/subjects/{id} — cập nhật môn.</summary>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "Admin,HeadOfDept")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Update(int id, [FromBody] CreateUpdateSubjectDto dto)
     {
         var (result, error) = await _service.UpdateAsync(id, dto);
@@ -63,7 +63,7 @@ public class SubjectController : ControllerBase
 
     /// <summary>DELETE /api/subjects/{id} — xóa môn (chặn nếu đang phân công).</summary>
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = "Admin,HeadOfDept")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var (success, message) = await _service.DeleteAsync(id);

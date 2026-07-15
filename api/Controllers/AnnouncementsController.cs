@@ -39,7 +39,7 @@ public class AnnouncementsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> Create([FromBody] CreateUpdateAnnouncementDto dto)
     {
         var actorId = GetCurrentUserId();
@@ -52,7 +52,7 @@ public class AnnouncementsController : ControllerBase
     }
 
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> Update(int id, [FromBody] CreateUpdateAnnouncementDto dto)
     {
         var actorId = GetCurrentUserId();
@@ -69,7 +69,7 @@ public class AnnouncementsController : ControllerBase
     }
 
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var actorId = GetCurrentUserId();

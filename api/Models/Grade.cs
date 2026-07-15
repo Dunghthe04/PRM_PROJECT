@@ -37,7 +37,7 @@ public class Grade
     /// <summary>Thời điểm công bố — null khi còn Nháp.</summary>
     public DateTime? PublishedAt { get; set; }
 
-    /// <summary>Tuỳ chọn: Trưởng bộ môn duyệt sau khi Publish.</summary>
+    /// <summary>Tuỳ chọn: Admin duyệt sau khi Publish.</summary>
     public bool IsApproved { get; set; }
 
     public int? ApprovedById { get; set; }

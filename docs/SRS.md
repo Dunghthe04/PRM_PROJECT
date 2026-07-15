@@ -3,8 +3,8 @@
 **Tên dự án:** Ứng dụng Quản lý & Giao tiếp Giáo dục FSchool
 **Nền tảng mục tiêu:** 
 - Mobile App (Android / iOS): Dành cho Học sinh, Phụ huynh, Giáo viên.
-- Web Portal (PC): Dành cho Quản trị viên, Trưởng bộ môn/Giáo vụ.
-**Phiên bản tài liệu:** 1.1
+- Web Portal (PC): Dành cho Quản trị viên.
+**Phiên bản tài liệu:** 1.2
 
 ---
 
@@ -21,13 +21,12 @@ Hệ thống cung cấp các công cụ cốt lõi để theo dõi điểm số,
 ---
 
 ## 2. Các vai trò trong hệ thống (Actors/Roles)
-Hệ thống FSchool phân quyền truy cập dựa trên 5 vai trò (Role-Based Access Control) với mức độ thẩm quyền khác nhau:
+Hệ thống FSchool phân quyền truy cập dựa trên 4 vai trò (Role-Based Access Control) với mức độ thẩm quyền khác nhau:
 
 1. **Học sinh/Sinh viên (Student - Mobile App):** Đối tượng thụ hưởng giáo dục. Được phép xem dữ liệu cá nhân (lịch học, điểm số, bài tập, học phí) và thực hiện tương tác cơ bản (nộp bài, xem thông báo).
 2. **Phụ huynh (Parent - Mobile App):** Người giám hộ. Có quyền hạn tra cứu tương đương Học sinh, **được phép tạo đơn xin nghỉ học** và thực hiện **thanh toán học phí**. Đặc biệt hỗ trợ tính năng **Chuyển đổi hồ sơ (Switch Profile)** để quản lý nhiều con em đang học cùng hệ thống.
-3. **Giáo viên (Teacher - Mobile App):** Người vận hành trực tiếp lớp học. Có thẩm quyền điểm danh, nhập điểm số, tạo/quản lý bài tập, duyệt đơn xin nghỉ và phát hành thông báo đẩy (Push notification) đến lớp mình phụ trách.
-4. **Trưởng bộ môn / Giáo vụ (Head of Dept - Web Portal):** Người điều hành chuyên môn. Thẩm quyền tạo danh sách lớp học, môn học, phân công giáo viên giảng dạy và phê duyệt điểm số (nếu có).
-5. **Quản trị viên (Admin - Web Portal):** Người quản lý toàn bộ hệ thống lõi. Toàn quyền quản lý dữ liệu người dùng (CRUD tài khoản), thiết lập cấu hình hệ thống, tích hợp cổng thanh toán và phát hành thông báo toàn trường.
+3. **Giáo viên (Teacher - Mobile App):** Người vận hành trực tiếp lớp học. Có thẩm quyền điểm danh, tạo/quản lý bài tập, duyệt đơn xin nghỉ và phát hành thông báo đẩy (Push notification) đến lớp mình phụ trách. *(Nhập điểm số không thuộc GV — xem vai trò Admin.)*
+4. **Quản trị viên (Admin - Web Portal):** Người quản lý toàn bộ hệ thống lõi. Toàn quyền quản lý dữ liệu người dùng (CRUD tài khoản), quản lý danh mục (khối/lớp/môn/kỳ), phân công giảng dạy, quản lý & nhập điểm số, thiết lập cấu hình hệ thống, tích hợp cổng thanh toán và phát hành thông báo toàn trường. *(Đã gộp vai trò Trưởng bộ môn/Giáo vụ trước đây vào Admin — các thao tác quản trị/nhập liệu chỉ là insert vào DB nên không tách riêng vai trò.)*
 
 ---
 
@@ -60,7 +59,7 @@ Hệ thống được chia thành 6 phân hệ nghiệp vụ chính:
 
 ### Phân hệ 3: Dành cho Giáo viên (Teacher Dashboard - Mobile App)
 *   **FR3.1 - Điểm danh thông minh:** Hiển thị danh sách lớp. Cho phép thao tác điểm danh nhanh: Có mặt (P), Vắng mặt (A), Đi muộn (L). *Hỗ trợ điểm danh Offline và tự động đồng bộ khi có mạng.*
-*   **FR3.2 - Quản lý Điểm số:** Nhập điểm số hàng loạt cho học sinh theo loại đầu điểm (Assessment Type). Điểm có thể lưu nháp trước khi bấm "Công bố" (Publish) để gửi thông báo đến HS/PH.
+*   **FR3.2 - (ĐÃ CHUYỂN SANG ADMIN):** ~~Nhập điểm số~~ không còn thuộc Giáo viên. Việc nhập/quản lý điểm số do Admin thực hiện (insert vào DB) — xem **FR5.6**. HS/PH vẫn xem điểm bình thường (FR2.3).
 *   **FR3.3 - Quản lý Đơn từ:** Nhận, xem xét đơn xin nghỉ của học sinh và thao tác Duyệt (Approve) / Từ chối (Reject). Hệ thống tự bắn thông báo kết quả cho HS/PH.
 *   **FR3.4 - Gửi Thông báo Lớp:** Soạn thảo văn bản, đính kèm tài liệu và gửi Push Notification (1 chiều) đến toàn bộ phụ huynh/học sinh thuộc lớp mình phụ trách.
 *   **FR3.5 - Quản lý Bài tập (Assignments):** Tạo mới, chỉnh sửa, xóa bài tập (set deadline, đính kèm đề bài). Theo dõi trạng thái nộp bài, chấm điểm và ghi chú (feedback) trực tiếp vào bài nộp.
@@ -69,12 +68,13 @@ Hệ thống được chia thành 6 phân hệ nghiệp vụ chính:
 *   **FR4.1 - Quản lý Khoản thu:** Kế toán/Admin tạo các đợt thu học phí, gán mức phí áp dụng cho từng khối/lớp hoặc học sinh cụ thể.
 *   **FR4.2 - Tích hợp & Đối soát:** Quản lý cấu hình API Key của **VNPay** và **PayOS**. Theo dõi, đối soát trạng thái giao dịch (Thành công, Thất bại, Chờ thanh toán) thông qua Webhook.
 
-### Phân hệ 5: Dành cho Quản trị viên & Trưởng bộ môn (Web Portal)
+### Phân hệ 5: Dành cho Quản trị viên (Web Portal)
 *   **FR5.1 - Quản lý Người dùng (Admin):** Thêm, Sửa, Xóa, Khóa tài khoản. Hỗ trợ Reset mật khẩu, Import tài khoản hàng loạt bằng file Excel.
-*   **FR5.2 - Quản lý Danh mục (Trưởng bộ môn/Admin):** Quản lý thực thể lõi: Khối, Lớp học, Môn học, Kỳ học.
+*   **FR5.2 - Quản lý Danh mục (Admin):** Quản lý thực thể lõi: Khối, Lớp học, Môn học, Kỳ học.
 *   **FR5.3 - Phân công Giảng dạy:** Gán Giáo viên vào Lớp học và Môn học. Quản lý luân chuyển giáo viên.
 *   **FR5.4 - Bảng tin Toàn trường (Global Newsfeed):** Đăng tải thông báo quan trọng (Lịch nghỉ lễ, sự kiện) đến toàn bộ thiết bị App.
 *   **FR5.5 - Báo cáo & Thống kê:** Xuất file Excel/PDF các báo cáo: Bảng điểm toàn trường/lớp, Tỷ lệ chuyên cần, Tình trạng đóng học phí.
+*   **FR5.6 - Quản lý Điểm số (Admin):** Nhập/quản lý điểm số học sinh theo loại đầu điểm (Assessment Type), lưu nháp và Công bố (Publish) để gửi thông báo đến HS/PH. (Thao tác insert vào DB.)
 
 ---
 

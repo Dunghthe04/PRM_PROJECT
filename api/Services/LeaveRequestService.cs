@@ -59,7 +59,7 @@ public class LeaveRequestService : ILeaveRequestService
     public async Task<(List<LeaveRequestDto>? Result, string? Error)> GetListAsync(
         LeaveRequestListQueryDto query, int actorId, UserRole actorRole)
     {
-        if (actorRole is not (UserRole.Teacher or UserRole.Admin or UserRole.HeadOfDept))
+        if (actorRole is not (UserRole.Teacher or UserRole.Admin))
             return (null, "Không có quyền xem danh sách đơn nghỉ.");
 
         if (!query.ClassId.HasValue)
@@ -267,7 +267,7 @@ public class LeaveRequestService : ILeaveRequestService
 
     private async Task<string?> VerifyTeacherCanReviewAsync(int actorId, UserRole role, int classId)
     {
-        if (role is UserRole.Admin or UserRole.HeadOfDept)
+        if (role is UserRole.Admin)
             return null;
 
         if (role != UserRole.Teacher)
@@ -282,7 +282,7 @@ public class LeaveRequestService : ILeaveRequestService
 
     private async Task<string?> VerifyCanViewAsync(LeaveRequest entity, int actorId, UserRole role)
     {
-        if (role is UserRole.Admin or UserRole.HeadOfDept)
+        if (role is UserRole.Admin)
             return null;
 
         if (role == UserRole.Teacher)

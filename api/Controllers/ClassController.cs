@@ -7,7 +7,7 @@ namespace Api.Controllers;
 
 /// <summary>
 /// CRUD Lớp học + gán/bỏ học sinh (FR5.2) — Ngày 4 Bước 3.
-/// Tạo/sửa/xóa/gán HS: Admin, HeadOfDept. Xem: mọi user đã login.
+/// Tạo/sửa/xóa/gán HS: Admin. Xem: mọi user đã login.
 /// </summary>
 [ApiController]
 [Route("api/classes")]
@@ -41,7 +41,7 @@ public class ClassController : ControllerBase
 
     /// <summary>POST /api/classes — tạo lớp thuộc 1 kỳ học.</summary>
     [HttpPost]
-    [Authorize(Roles = "Admin,HeadOfDept")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create([FromBody] CreateUpdateClassDto dto)
     {
         var (result, error) = await _service.CreateAsync(dto);
@@ -51,7 +51,7 @@ public class ClassController : ControllerBase
 
     /// <summary>PUT /api/classes/{id} — cập nhật lớp.</summary>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "Admin,HeadOfDept")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Update(int id, [FromBody] CreateUpdateClassDto dto)
     {
         var (result, error) = await _service.UpdateAsync(id, dto);
@@ -65,7 +65,7 @@ public class ClassController : ControllerBase
 
     /// <summary>DELETE /api/classes/{id} — xóa lớp (chặn nếu còn HS / phân công).</summary>
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = "Admin,HeadOfDept")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var (success, message) = await _service.DeleteAsync(id);
@@ -88,7 +88,7 @@ public class ClassController : ControllerBase
 
     /// <summary>POST /api/classes/{id}/students — thêm HS vào lớp.</summary>
     [HttpPost("{id:int}/students")]
-    [Authorize(Roles = "Admin,HeadOfDept")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> AddStudent(int id, [FromBody] AddStudentToClassDto dto)
     {
         var (success, message) = await _service.AddStudentAsync(id, dto.StudentId);
@@ -102,7 +102,7 @@ public class ClassController : ControllerBase
 
     /// <summary>DELETE /api/classes/{id}/students/{studentId} — bỏ HS khỏi lớp.</summary>
     [HttpDelete("{id:int}/students/{studentId:int}")]
-    [Authorize(Roles = "Admin,HeadOfDept")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> RemoveStudent(int id, int studentId)
     {
         var (success, message) = await _service.RemoveStudentAsync(id, studentId);

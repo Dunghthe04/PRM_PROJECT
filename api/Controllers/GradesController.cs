@@ -28,7 +28,7 @@ public class GradesController : ControllerBase
     /// GV xem bảng điểm lớp (Draft + Published).
     /// </summary>
     [HttpGet]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> GetList([FromQuery] GradeListQueryDto query)
     {
         var actorId = GetCurrentUserId();
@@ -55,7 +55,7 @@ public class GradesController : ControllerBase
 
     /// <summary>POST /api/grades/batch — nhập điểm hàng loạt (lưu Nháp).</summary>
     [HttpPost("batch")]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> BatchUpsert([FromBody] BatchGradeDto dto)
     {
         var actorId = GetCurrentUserId();
@@ -69,7 +69,7 @@ public class GradesController : ControllerBase
 
     /// <summary>POST /api/grades/publish — công bố toàn bộ điểm Nháp của 1 đầu điểm.</summary>
     [HttpPost("publish")]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> Publish([FromBody] PublishGradesDto dto)
     {
         var actorId = GetCurrentUserId();
@@ -93,7 +93,7 @@ public class GradesController : ControllerBase
 
     /// <summary>PUT /api/grades/{id} — sửa điểm (chỉ khi còn Nháp).</summary>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateGradeDto dto)
     {
         var actorId = GetCurrentUserId();
@@ -109,9 +109,9 @@ public class GradesController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>PUT /api/grades/{id}/approve — Trưởng bộ môn duyệt điểm đã công bố.</summary>
+    /// <summary>PUT /api/grades/{id}/approve — Admin duyệt điểm đã công bố.</summary>
     [HttpPut("{id:int}/approve")]
-    [Authorize(Roles = "HeadOfDept,Admin")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Approve(int id)
     {
         var actorId = GetCurrentUserId();
@@ -128,7 +128,7 @@ public class GradesController : ControllerBase
 
     /// <summary>DELETE /api/grades/{id} — xóa điểm Nháp.</summary>
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var actorId = GetCurrentUserId();

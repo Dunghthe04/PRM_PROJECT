@@ -1,6 +1,6 @@
 # FSchool — Danh sách API Endpoints
 
-Bản thiết kế API suy ra từ [SRS.md](SRS.md) + domain model hiện có. Cả 5 vai trò dùng chung app Flutter (Admin/Trưởng bộ môn dùng bản Flutter Web) và đều gọi vào các endpoint này.
+Bản thiết kế API suy ra từ [SRS.md](SRS.md) + domain model hiện có. Cả 4 vai trò dùng chung app Flutter (Admin dùng bản Flutter Web) và đều gọi vào các endpoint này.
 
 - **Tổng số:** ~118 endpoint, chia 19 nhóm (controller).
 - **Quy ước:** prefix `/api`. Bảo vệ bằng JWT; cột **Role** ghi vai trò được phép (— = mọi user đã đăng nhập, *Public* = không cần token).
@@ -70,7 +70,7 @@ Bản thiết kế API suy ra từ [SRS.md](SRS.md) + domain model hiện có. C
 | 22 | POST | `/api/parents/{id}/children/{studentId}` | Admin | Liên kết PH–HS |
 | 23 | DELETE | `/api/parents/{id}/children/{studentId}` | Admin | Gỡ liên kết |
 
-## 4. Semesters — FR5.2 · Ngày 4 · Role: Admin/Trưởng bộ môn
+## 4. Semesters — FR5.2 · Ngày 4 · Role: Admin
 | # | Method | Endpoint | Mô tả |
 |---|---|---|---|
 | 24 | GET | `/api/semesters` | Danh sách kỳ học |
@@ -79,7 +79,7 @@ Bản thiết kế API suy ra từ [SRS.md](SRS.md) + domain model hiện có. C
 | 27 | PUT | `/api/semesters/{id}` | Sửa |
 | 28 | DELETE | `/api/semesters/{id}` | Xóa |
 
-## 5. Subjects — FR5.2 · Ngày 4 · Role: Admin/Trưởng bộ môn
+## 5. Subjects — FR5.2 · Ngày 4 · Role: Admin
 | # | Method | Endpoint | Mô tả |
 |---|---|---|---|
 | 29 | GET | `/api/subjects` | Danh sách môn |
@@ -88,7 +88,7 @@ Bản thiết kế API suy ra từ [SRS.md](SRS.md) + domain model hiện có. C
 | 32 | PUT | `/api/subjects/{id}` | Sửa |
 | 33 | DELETE | `/api/subjects/{id}` | Xóa |
 
-## 6. Classes — FR5.2 · Ngày 4 · Role: Admin/Trưởng bộ môn (GET: mở rộng)
+## 6. Classes — FR5.2 · Ngày 4 · Role: Admin (GET: mở rộng)
 | # | Method | Endpoint | Mô tả |
 |---|---|---|---|
 | 34 | GET | `/api/classes` | Danh sách lớp (phân trang) |
@@ -100,7 +100,7 @@ Bản thiết kế API suy ra từ [SRS.md](SRS.md) + domain model hiện có. C
 | 40 | POST | `/api/classes/{id}/students` | Thêm HS vào lớp |
 | 41 | DELETE | `/api/classes/{id}/students/{studentId}` | Bỏ HS khỏi lớp |
 
-## 7. Teaching Assignment — FR5.3 · Ngày 4 · Role: Admin/Trưởng bộ môn
+## 7. Teaching Assignment — FR5.3 · Ngày 4 · Role: Admin
 | # | Method | Endpoint | Mô tả |
 |---|---|---|---|
 | 42 | GET | `/api/teacher-assignments` | DS phân công (lọc theo lớp/GV/môn) |

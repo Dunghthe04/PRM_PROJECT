@@ -141,7 +141,7 @@ public class TimetableService : ITimetableService
         var user = await _userRepository.GetUserByIdAsync(teacherId);
         if (user == null) return (null, "Không tìm thấy giáo viên.");
 
-        if (user.Role is not (UserRole.Teacher or UserRole.HeadOfDept))
+        if (user.Role is not (UserRole.Teacher))
             return (null, "Endpoint này dành cho giáo viên.");
 
         var slots = await _timetableRepository.GetByTeacherAsync(teacherId);
@@ -232,7 +232,7 @@ public class TimetableService : ITimetableService
         if (teacher == null)
             return "Không tìm thấy giáo viên.";
 
-        if (teacher.Role is not (UserRole.Teacher or UserRole.HeadOfDept))
+        if (teacher.Role is not (UserRole.Teacher))
             return "User này không phải giáo viên.";
 
         return null;

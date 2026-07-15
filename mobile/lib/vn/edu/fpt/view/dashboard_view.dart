@@ -142,21 +142,16 @@ class _DashboardTabState extends State<DashboardTab> {
 
     switch (role) {
       case 'Teacher':
-      case 'HeadOfDept':
         return [
           _ActionCard(
               icon: Icons.class_,
               label: 'Lớp học',
-              onTap: () => _todo('Lớp học')),
+              onTap: () => widget.onNavigateTab('class')),
           notiCard,
-          _ActionCard(
-              icon: Icons.grade,
-              label: 'Nhập điểm',
-              onTap: () => _todo('Nhập điểm')),
           _ActionCard(
               icon: Icons.checklist,
               label: 'Điểm danh',
-              onTap: () => _todo('Điểm danh')),
+              onTap: () => widget.onNavigateTab('class')),
         ];
       case 'Admin':
         return [

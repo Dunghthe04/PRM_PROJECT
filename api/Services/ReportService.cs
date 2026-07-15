@@ -6,7 +6,7 @@ namespace Api.Services;
 
 /// <summary>
 /// Nghiệp vụ báo cáo & thống kê (FR5.5 — Ngày 12 Bước 2).
-/// Tổng hợp bảng điểm, chuyên cần, học phí + dashboard cho Admin / Trưởng bộ môn.
+/// Tổng hợp bảng điểm, chuyên cần, học phí + dashboard cho Admin.
 /// Chỉ đọc dữ liệu (không thay đổi state); xuất Excel/PDF làm ở Bước 3–4.
 /// </summary>
 public interface IReportService
@@ -47,7 +47,7 @@ public class ReportService : IReportService
             : await _context.Users.CountAsync(u => u.Role == UserRole.Student);
 
         var totalTeachers = await _context.Users
-            .CountAsync(u => u.Role == UserRole.Teacher || u.Role == UserRole.HeadOfDept);
+            .CountAsync(u => u.Role == UserRole.Teacher);
         var totalParents = await _context.Users.CountAsync(u => u.Role == UserRole.Parent);
         var totalClasses = classId.HasValue ? 1 : await _context.Classes.CountAsync();
 

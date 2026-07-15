@@ -368,7 +368,7 @@ public class AttendanceService : IAttendanceService
     /// <summary>GV phải có phân công dạy lớp (bất kỳ môn); Admin/Trưởng BM bypass.</summary>
     private async Task<string?> VerifyTeacherCanRecordAsync(int actorId, UserRole role, int classId)
     {
-        if (role is UserRole.Admin or UserRole.HeadOfDept)
+        if (role is UserRole.Admin)
             return null;
 
         if (role != UserRole.Teacher)

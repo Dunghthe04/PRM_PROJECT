@@ -131,7 +131,7 @@ public static class UserExcelHelper
 
         if (string.IsNullOrWhiteSpace(text))
         {
-            error = "Thiếu Role (Admin, HeadOfDept, Teacher, Parent, Student).";
+            error = "Thiếu Role (Admin, Teacher, Parent, Student).";
             return false;
         }
 
@@ -144,7 +144,7 @@ public static class UserExcelHelper
         if (Enum.TryParse<UserRole>(text, ignoreCase: true, out role))
             return true;
 
-        error = $"Role không hợp lệ: '{text}'. Dùng: Admin, HeadOfDept, Teacher, Parent, Student.";
+        error = $"Role không hợp lệ: '{text}'. Dùng: Admin, Teacher, Parent, Student.";
         return false;
     }
 }

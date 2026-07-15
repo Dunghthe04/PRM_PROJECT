@@ -356,7 +356,7 @@ public class GradeService : IGradeService
     private async Task<string?> VerifyTeacherCanGradeAsync(
         int actorId, UserRole role, int classId, int subjectId)
     {
-        if (role is UserRole.Admin or UserRole.HeadOfDept)
+        if (role is UserRole.Admin)
             return null;
 
         if (role != UserRole.Teacher)

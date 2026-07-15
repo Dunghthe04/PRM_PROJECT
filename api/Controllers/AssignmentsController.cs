@@ -30,7 +30,7 @@ public class AssignmentsController : ControllerBase
     /// GET /api/assignments?classId=&amp;subjectId= — DS bài tập lớp (GV).
     /// </summary>
     [HttpGet("assignments")]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> GetList([FromQuery] AssignmentListQueryDto query)
     {
         var actorId = GetCurrentUserId();
@@ -78,7 +78,7 @@ public class AssignmentsController : ControllerBase
 
     /// <summary>POST /api/assignments — GV tạo bài tập.</summary>
     [HttpPost("assignments")]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> Create([FromBody] CreateUpdateAssignmentDto dto)
     {
         var actorId = GetCurrentUserId();
@@ -92,7 +92,7 @@ public class AssignmentsController : ControllerBase
 
     /// <summary>PUT /api/assignments/{id} — sửa bài tập.</summary>
     [HttpPut("assignments/{id:int}")]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> Update(int id, [FromBody] CreateUpdateAssignmentDto dto)
     {
         var actorId = GetCurrentUserId();
@@ -110,7 +110,7 @@ public class AssignmentsController : ControllerBase
 
     /// <summary>DELETE /api/assignments/{id} — xóa bài tập.</summary>
     [HttpDelete("assignments/{id:int}")]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var actorId = GetCurrentUserId();
@@ -128,7 +128,7 @@ public class AssignmentsController : ControllerBase
 
     /// <summary>GET /api/assignments/{id}/submissions — GV xem DS bài nộp.</summary>
     [HttpGet("assignments/{id:int}/submissions")]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> GetSubmissions(int id)
     {
         var actorId = GetCurrentUserId();
@@ -191,7 +191,7 @@ public class AssignmentsController : ControllerBase
 
     /// <summary>PUT /api/submissions/{id}/grade — GV chấm điểm + feedback.</summary>
     [HttpPut("submissions/{id:int}/grade")]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> Grade(int id, [FromBody] GradeSubmissionDto dto)
     {
         var actorId = GetCurrentUserId();

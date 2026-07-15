@@ -26,7 +26,7 @@ public class LeaveRequestsController : ControllerBase
 
     /// <summary>GET /api/leave-requests?classId=1&amp;status=Pending — GV xem đơn cần duyệt.</summary>
     [HttpGet]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> GetList([FromQuery] LeaveRequestListQueryDto query)
     {
         var actorId = GetCurrentUserId();
@@ -80,7 +80,7 @@ public class LeaveRequestsController : ControllerBase
 
     /// <summary>PUT /api/leave-requests/{id}/approve — GV duyệt đơn.</summary>
     [HttpPut("{id:int}/approve")]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> Approve(int id)
     {
         var actorId = GetCurrentUserId();
@@ -98,7 +98,7 @@ public class LeaveRequestsController : ControllerBase
 
     /// <summary>PUT /api/leave-requests/{id}/reject — GV từ chối đơn.</summary>
     [HttpPut("{id:int}/reject")]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> Reject(int id, [FromBody] RejectLeaveRequestDto dto)
     {
         var actorId = GetCurrentUserId();

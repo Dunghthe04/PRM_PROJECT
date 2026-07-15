@@ -25,7 +25,7 @@ public class AttendanceController : ControllerBase
 
     /// <summary>GET /api/attendance?classId=1&amp;date=2026-07-11 — GV xem điểm danh lớp theo ngày.</summary>
     [HttpGet]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> GetByClassAndDate([FromQuery] AttendanceListQueryDto query)
     {
         var actorId = GetCurrentUserId();
@@ -52,7 +52,7 @@ public class AttendanceController : ControllerBase
 
     /// <summary>GET /api/attendance/summary?classId=1 — thống kê tỷ lệ chuyên cần lớp.</summary>
     [HttpGet("summary")]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> GetSummary([FromQuery] AttendanceSummaryQueryDto query)
     {
         var actorId = GetCurrentUserId();
@@ -66,7 +66,7 @@ public class AttendanceController : ControllerBase
 
     /// <summary>POST /api/attendance/batch — điểm danh hàng loạt P/A/L.</summary>
     [HttpPost("batch")]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> BatchUpsert([FromBody] BatchAttendanceDto dto)
     {
         var actorId = GetCurrentUserId();
@@ -80,7 +80,7 @@ public class AttendanceController : ControllerBase
 
     /// <summary>POST /api/attendance/sync — mobile offline gửi nhiều bản ghi lên.</summary>
     [HttpPost("sync")]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> Sync([FromBody] SyncAttendanceDto dto)
     {
         var actorId = GetCurrentUserId();
@@ -93,7 +93,7 @@ public class AttendanceController : ControllerBase
 
     /// <summary>PUT /api/attendance/{id} — sửa trạng thái 1 bản ghi.</summary>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "Teacher,Admin,HeadOfDept")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateAttendanceDto dto)
     {
         var actorId = GetCurrentUserId();

@@ -7,7 +7,7 @@ class UserModel {
   final String? email; // có thể null
   final bool isPhoneVerified;
   final bool isLocked;
-  final String role; // "Admin" | "HeadOfDept" | "Teacher" | "Parent" | "Student"
+  final String role; // "Admin" | "Teacher" | "Parent" | "Student"
 
   // Constructor: 'required' = bắt buộc truyền khi tạo object.
   UserModel({
@@ -43,8 +43,6 @@ class UserModel {
     switch (role) {
       case 'Admin':
         return 'Quản trị viên';
-      case 'HeadOfDept':
-        return 'Trưởng bộ môn';
       case 'Teacher':
         return 'Giáo viên';
       case 'Parent':

@@ -149,7 +149,7 @@ public class AnnouncementService : IAnnouncementService
                 if (!assignments.Any(ta => ta.ClassId == dto.TargetClassId.Value))
                     return "Bạn chưa được phân công dạy lớp này.";
             }
-            else if (actorRole is not (UserRole.Admin or UserRole.HeadOfDept))
+            else if (actorRole is not (UserRole.Admin))
             {
                 return "Không có quyền đăng bảng tin lớp.";
             }
@@ -164,7 +164,7 @@ public class AnnouncementService : IAnnouncementService
 
     private string? VerifyCanModify(Announcement entity, int actorId, UserRole role)
     {
-        if (role is UserRole.Admin or UserRole.HeadOfDept)
+        if (role is UserRole.Admin)
             return null;
 
         if (role == UserRole.Teacher && entity.CreatedById == actorId)
@@ -176,7 +176,7 @@ public class AnnouncementService : IAnnouncementService
     /// <summary>Lớp user được xem bảng tin Class.</summary>
     private async Task<List<int>> GetVisibleClassIdsAsync(int actorId, UserRole role)
     {
-        if (role is UserRole.Admin or UserRole.HeadOfDept)
+        if (role is UserRole.Admin)
             return await _context.Classes.Select(c => c.Id).ToListAsync();
 
         if (role == UserRole.Teacher)
