@@ -12,6 +12,7 @@ import 'child_switcher.dart';
 import 'dashboard_view.dart';
 import 'notification_view.dart';
 import 'study_view.dart';
+import 'admin_shell_view.dart';
 import 'teacher_class_view.dart';
 
 /// HomeView: sau login, tải hồ sơ (/account/me) rồi dựng khung chính.
@@ -72,7 +73,10 @@ class _HomeViewState extends State<HomeView> {
           );
         }
 
-        // 4) Có user → dựng khung chính có bottom nav
+        // 4) Admin → shell sidebar (Ngày 19); các role khác → bottom nav
+        if (user.role == 'Admin') {
+          return AdminShell(user: user);
+        }
         return _MainShell(user: user);
       },
     );

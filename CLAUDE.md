@@ -18,7 +18,7 @@ Monorepo gồm Mobile App (Flutter) + Backend API (.NET 8). Tài liệu gốc: [
 
 # 🗺️ TIMELINE THỰC HIỆN (theo ngày — phủ 100% SRS)
 
-> **👉 VỊ TRÍ HIỆN TẠI: Cuối NGÀY 18.** Tiếp theo Ngày 19 — Admin: Quản lý người dùng & Danh mục (Flutter Web).
+> **👉 VỊ TRÍ HIỆN TẠI: Cuối NGÀY 19.** Tiếp theo Ngày 20 — Admin: Tài chính, Bảng tin toàn trường, Báo cáo (xem trên màn).
 
 Ký hiệu: ✅ xong · 🟡 đang làm · ⬜ chưa làm. "Ngày" = 1 buổi làm tập trung, tự map vào lịch thật.
 Mỗi ngày kết thúc bằng **chạy thử + commit**.
@@ -127,13 +127,13 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 ## 🅒 GIAI ĐOẠN ADMIN — màn trong app Flutter (Ngày 19–20)
 *(chạy bản Flutter Web/Desktop với layout rộng + sidebar; KHÔNG dựng project web riêng)*
 
-### NGÀY 19 — Quản lý người dùng & Danh mục (FR5.1, FR5.2)
-- [ ] Layout admin (sidebar/rộng), điều hướng riêng cho role Admin
-- [ ] Màn Quản lý người dùng (FR5.1): thêm / sửa / khóa-mở / reset mật khẩu
+### ✅ NGÀY 19 — Quản lý người dùng & Danh mục (FR5.1, FR5.2)
+- [x] Layout admin (sidebar khi rộng, Drawer khi hẹp) — `AdminShell`
+- [x] Màn Quản lý người dùng (FR5.1): thêm / sửa / khóa-mở / reset mật khẩu
 - [x] ~~Import Excel tài khoản~~ → **BỎ** (không làm trên app)
-- [ ] Màn quản lý Khối/Lớp/Môn/Kỳ (FR5.2)
-- [x] ~~Nhập điểm (FR5.6)~~ → **BỎ UI** — insert trực tiếp DB / seeder (HS/PH vẫn xem điểm)
-- [x] ~~Phân công GV (FR5.3) + dựng TKB~~ → **BỎ UI** — insert trực tiếp DB / seeder (HS/PH vẫn xem TKB)
+- [x] Màn danh mục: Kỳ · Môn · Lớp (FR5.2) — không có entity Khối riêng (gắn trong tên lớp)
+- [x] ~~Nhập điểm (FR5.6)~~ → **BỎ UI** — insert DB / seeder
+- [x] ~~Phân công GV (FR5.3) + dựng TKB~~ → **BỎ UI** — insert DB / seeder
 
 ### NGÀY 20 — Tài chính, Bảng tin, Báo cáo (FR4.1, FR4.2, FR5.4, FR5.5)
 - [ ] Màn Khoản thu/đợt thu + cấu hình API key VNPay/PayOS + đối soát (FR4.1, FR4.2)
@@ -175,8 +175,7 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 
 ---
 
-## 👉 HÔM NAY LÀM GÌ (Ngày 19 — Admin: Người dùng & Danh mục)
-1. Layout admin (sidebar/rộng) + điều hướng riêng role Admin.
-2. Màn Quản lý người dùng (FR5.1): thêm / sửa / khóa·mở / reset mật khẩu.
-3. Màn Khối/Lớp/Môn/Kỳ (FR5.2).
-4. ~~Nhập điểm / Phân công GV / TKB / Import Excel~~ → không làm UI (insert DB).
+## 👉 HÔM NAY LÀM GÌ (Ngày 20 — Admin: Tài chính, Bảng tin, Báo cáo)
+1. Màn Khoản thu / hóa đơn + cấu hình VNPay/PayOS + đối soát.
+2. Đăng thông báo toàn trường.
+3. Dashboard báo cáo xem trên màn (điểm / chuyên cần / học phí).

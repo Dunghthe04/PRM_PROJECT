@@ -70,7 +70,7 @@ Hệ thống được chia thành 6 phân hệ nghiệp vụ chính:
 
 ### Phân hệ 5: Dành cho Quản trị viên (Web Portal)
 *   **FR5.1 - Quản lý Người dùng (Admin):** Thêm, Sửa, Khóa/Mở tài khoản, Reset mật khẩu. *(~~Import Excel~~ — bỏ, không làm trên app.)*
-*   **FR5.2 - Quản lý Danh mục (Admin):** Quản lý thực thể lõi: Khối, Lớp học, Môn học, Kỳ học.
+*   **FR5.2 - Quản lý Danh mục (Admin):** Quản lý Kỳ học, Môn học, Lớp học. *(Không có entity Khối riêng — có thể gắn khối trong tên lớp, vd 10A1.)*
 *   **FR5.3 - Phân công Giảng dạy + TKB:** Gán Giáo viên vào Lớp/Môn và dựng Thời khóa biểu — **thực hiện bằng insert DB / seeder** (không dựng màn Admin trên app). HS/PH vẫn xem TKB (FR2.3).
 *   **FR5.4 - Bảng tin Toàn trường (Global Newsfeed):** Đăng tải thông báo quan trọng (Lịch nghỉ lễ, sự kiện) đến toàn bộ thiết bị App.
 *   **FR5.5 - Báo cáo & Thống kê:** Xem trên màn hình các báo cáo tổng hợp: Bảng điểm toàn trường/lớp, Tỷ lệ chuyên cần, Tình trạng đóng học phí. *(Không xuất Excel/PDF trên app — không phù hợp thao tác điện thoại.)*
