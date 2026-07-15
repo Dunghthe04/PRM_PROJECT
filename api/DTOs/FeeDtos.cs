@@ -127,6 +127,20 @@ public class CreatePaymentResultDto
     public string OrderCode { get; set; } = string.Empty;
     public string PaymentUrl { get; set; } = string.Empty;
     public decimal Amount { get; set; }
+
+    /// <summary>
+    /// Chuỗi VietQR (PayOS) để app tự vẽ QR trong màn hình.
+    /// Null khi chưa cấu hình PayOS thật (dev stub).
+    /// </summary>
+    public string? QrCode { get; set; }
+}
+
+/// <summary>Trạng thái 1 giao dịch — app poll để tự phát hiện đã thanh toán.</summary>
+public class PaymentStatusDto
+{
+    public string OrderCode { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty; // Pending | Paid | Failed…
+    public bool IsPaid { get; set; }
 }
 
 /// <summary>Cấu hình cổng (Admin) — secret có thể mask khi GET.</summary>

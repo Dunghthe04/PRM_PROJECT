@@ -41,6 +41,9 @@ public interface IPaymentService
     Task<(List<PaymentTransactionDto>? Result, string? Error)> GetHistoryAsync(
         int? studentId, int actorId, UserRole actorRole);
 
+    /// <summary>Trạng thái 1 giao dịch theo OrderCode (app poll tự phát hiện đã trả).</summary>
+    Task<(PaymentStatusDto? Result, string? Error)> GetTransactionStatusAsync(string orderCode);
+
     /// <summary>Admin xem cấu hình cổng (mask secret trong ConfigJson).</summary>
     Task<List<PaymentGatewayConfigDto>> GetConfigsAsync();
 
@@ -330,17 +333,27 @@ public class PaymentService : IPaymentService
 
         var orderCode = $"{provider.ToUpperInvariant()}-{invoice.Id}-{DateTime.UtcNow:yyyyMMddHHmmss}-{Random.Shared.Next(1000, 9999)}";
         string paymentUrl;
+        string? qrCode = null;
+        long? payOsOrder = null;
 
         if (provider == ProviderVnPay)
+        {
             paymentUrl = BuildVnPayUrl(invoice, orderCode, config);
+        }
         else
-            paymentUrl = await BuildPayOsUrlAsync(invoice, orderCode, config);
+        {
+            // Mã số PayOS phải cố định để hỏi lại trạng thái (tránh lệ thuộc GetHashCode khi restart).
+            payOsOrder = ComputePayOsOrder(orderCode);
+            (paymentUrl, qrCode) = await BuildPayOsUrlAsync(invoice, orderCode, config, payOsOrder.Value);
+        }
 
         var txn = await _paymentRepository.CreateTransactionAsync(new PaymentTransaction
         {
             FeeInvoiceId = invoice.Id,
             Provider = provider,
             OrderCode = orderCode,
+            // Lưu mã số PayOS ngay để poll trạng thái bền vững qua các lần khởi động lại.
+            ProviderTransactionId = payOsOrder?.ToString(),
             Amount = invoice.Amount,
             Status = FeePaymentStatus.Pending,
             PaymentUrl = paymentUrl,
@@ -352,8 +365,88 @@ public class PaymentService : IPaymentService
             Provider = provider,
             OrderCode = txn.OrderCode,
             PaymentUrl = paymentUrl,
-            Amount = txn.Amount
+            Amount = txn.Amount,
+            QrCode = qrCode
         }, null);
+    }
+
+    /// <summary>
+    /// Trạng thái giao dịch theo OrderCode (app poll để tự phát hiện đã trả).
+    /// Nếu còn Pending + là PayOS thật → CHỦ ĐỘNG hỏi PayOS (không cần webhook/ngrok).
+    /// Khi PayOS báo PAID → đánh dấu Paid + tạo biên lai ngay.
+    /// </summary>
+    public async Task<(PaymentStatusDto? Result, string? Error)> GetTransactionStatusAsync(string orderCode)
+    {
+        if (string.IsNullOrWhiteSpace(orderCode))
+            return (null, "Thiếu orderCode.");
+
+        var txn = await _paymentRepository.GetTransactionByOrderCodeAsync(orderCode);
+        if (txn == null) return (null, "Không tìm thấy giao dịch.");
+
+        // Chưa Paid + là PayOS → hỏi trực tiếp cổng PayOS xem đã trả chưa.
+        if (txn.Status == FeePaymentStatus.Pending
+            && string.Equals(txn.Provider, ProviderPayOs, StringComparison.OrdinalIgnoreCase))
+        {
+            var paid = await TryQueryPayOsPaidAsync(txn);
+            if (paid)
+            {
+                await MarkPaidAsync(txn, ProviderPayOs);
+                txn = await _paymentRepository.GetTransactionByOrderCodeAsync(orderCode) ?? txn;
+            }
+        }
+
+        return (new PaymentStatusDto
+        {
+            OrderCode = txn.OrderCode,
+            Status = txn.Status.ToString(),
+            IsPaid = txn.Status == FeePaymentStatus.Paid
+        }, null);
+    }
+
+    /// <summary>
+    /// Hỏi PayOS trạng thái 1 giao dịch (GET /v2/payment-requests/{orderCode}).
+    /// Trả về true nếu PayOS báo đã thanh toán (status = PAID). Không có khóa thật → false.
+    /// </summary>
+    private async Task<bool> TryQueryPayOsPaidAsync(PaymentTransaction txn)
+    {
+        try
+        {
+            var config = await _paymentRepository.GetConfigByProviderAsync(ProviderPayOs);
+            if (config == null || !config.IsEnabled) return false;
+
+            var cfg = ParseConfig(config.ConfigJson);
+            var clientId = cfg.GetValueOrDefault("ClientId", "");
+            var apiKey = cfg.GetValueOrDefault("ApiKey", "");
+            if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(apiKey))
+                return false;
+
+            // Ưu tiên mã số PayOS đã lưu lúc tạo; fallback tính lại từ OrderCode.
+            var numericOrder = long.TryParse(txn.ProviderTransactionId, out var stored)
+                ? stored
+                : ComputePayOsOrder(txn.OrderCode);
+
+            using var http = new HttpClient();
+            http.DefaultRequestHeaders.Add("x-client-id", clientId);
+            http.DefaultRequestHeaders.Add("x-api-key", apiKey);
+
+            var response = await http.GetAsync(
+                $"https://api-merchant.payos.vn/v2/payment-requests/{numericOrder}");
+            var json = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(json);
+
+            if (doc.RootElement.TryGetProperty("data", out var data)
+                && data.ValueKind == JsonValueKind.Object
+                && data.TryGetProperty("status", out var statusEl))
+            {
+                var status = statusEl.GetString();
+                return string.Equals(status, "PAID", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Lỗi hỏi trạng thái PayOS cho {Order}", txn.OrderCode);
+        }
+        return false;
     }
 
     private string BuildVnPayUrl(
@@ -394,8 +487,16 @@ public class PaymentService : IPaymentService
         return VnPayHelper.BuildPaymentUrl(paymentBase, parameters, hashSecret);
     }
 
-    private async Task<string> BuildPayOsUrlAsync(
-        FeeInvoice invoice, string orderCode, PaymentGatewayConfig? config)
+    /// <summary>Sinh mã số PayOS ổn định từ OrderCode nội bộ (đảm bảo &gt;= 1.000.000).</summary>
+    private static long ComputePayOsOrder(string orderCode)
+    {
+        long numericOrder = Math.Abs(orderCode.GetHashCode());
+        if (numericOrder < 1_000_000) numericOrder += 1_000_000;
+        return numericOrder;
+    }
+
+    private async Task<(string Url, string? QrCode)> BuildPayOsUrlAsync(
+        FeeInvoice invoice, string orderCode, PaymentGatewayConfig? config, long numericOrder)
     {
         var cfg = ParseConfig(config?.ConfigJson ?? "{}");
         var checksumKey = cfg.GetValueOrDefault("ChecksumKey", "DEV");
@@ -407,15 +508,14 @@ public class PaymentService : IPaymentService
         if (_env.IsDevelopment()
             && (config == null || string.Equals(checksumKey, "DEV", StringComparison.OrdinalIgnoreCase)))
         {
-            return $"{publicBase}/api/payments/dev/simulate-paid?orderCode={Uri.EscapeDataString(orderCode)}";
+            // Dev stub: chưa có khóa PayOS thật → không có QR thật.
+            return ($"{publicBase}/api/payments/dev/simulate-paid?orderCode={Uri.EscapeDataString(orderCode)}", null);
         }
 
         // PayOS thật: gọi REST API tạo payment link.
         // Khi có ClientId/ApiKey — ký và POST; thiếu thì fallback stub URL có chữ ký demo.
         var clientId = cfg.GetValueOrDefault("ClientId", "");
         var apiKey = cfg.GetValueOrDefault("ApiKey", "");
-        var numericOrder = Math.Abs(orderCode.GetHashCode());
-        if (numericOrder < 1_000_000) numericOrder += 1_000_000;
 
         var amount = PayOsHelper.ToPayOsAmount(invoice.Amount);
         var description = $"Hoa don #{invoice.Id}";
@@ -448,8 +548,12 @@ public class PaymentService : IPaymentService
                     && data.TryGetProperty("checkoutUrl", out var urlEl))
                 {
                     var url = urlEl.GetString();
+                    // Lấy thêm chuỗi QR (VietQR) để app tự vẽ QR trong màn hình.
+                    string? qr = data.TryGetProperty("qrCode", out var qrEl)
+                        ? qrEl.GetString()
+                        : null;
                     if (!string.IsNullOrWhiteSpace(url))
-                        return url;
+                        return (url, qr);
                 }
 
                 _logger.LogWarning("PayOS create link failed: {Body}", json);
@@ -461,7 +565,7 @@ public class PaymentService : IPaymentService
         }
 
         // Fallback: trang checkout giả (vẫn lưu OrderCode để webhook/dev simulate)
-        return $"{publicBase}/api/payments/dev/simulate-paid?orderCode={Uri.EscapeDataString(orderCode)}&sig={signature}";
+        return ($"{publicBase}/api/payments/dev/simulate-paid?orderCode={Uri.EscapeDataString(orderCode)}&sig={signature}", null);
     }
 
     private async Task<(bool Ok, string Message, PaymentTransaction? Txn)> ProcessVnPayCallbackAsync(
@@ -563,9 +667,10 @@ public class PaymentService : IPaymentService
 
         return pending.FirstOrDefault(t =>
         {
-            var h = Math.Abs(t.OrderCode.GetHashCode());
-            if (h < 1_000_000) h += 1_000_000;
-            return h == numeric;
+            // Ưu tiên khớp theo mã số PayOS đã lưu; fallback tính lại từ OrderCode.
+            if (long.TryParse(t.ProviderTransactionId, out var stored) && stored == numeric)
+                return true;
+            return ComputePayOsOrder(t.OrderCode) == numeric;
         });
     }
 

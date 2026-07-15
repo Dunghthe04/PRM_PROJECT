@@ -18,7 +18,7 @@ Monorepo gồm Mobile App (Flutter) + Backend API (.NET 8). Tài liệu gốc: [
 
 # 🗺️ TIMELINE THỰC HIỆN (theo ngày — phủ 100% SRS)
 
-> **👉 VỊ TRÍ HIỆN TẠI: Cuối NGÀY 15 (xong).** Tiếp theo Ngày 16 — Học sinh/PH: Đơn nghỉ & Học phí.
+> **👉 VỊ TRÍ HIỆN TẠI: Cuối NGÀY 16 (xong).** Tiếp theo Ngày 17 — Giáo viên: Điểm danh & Điểm số.
 
 Ký hiệu: ✅ xong · 🟡 đang làm · ⬜ chưa làm. "Ngày" = 1 buổi làm tập trung, tự map vào lịch thật.
 Mỗi ngày kết thúc bằng **chạy thử + commit**.
@@ -106,11 +106,12 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 - [x] Backend: cho phép PH truyền `studentId` (Switch Profile) ở TKB/Bài tập/Điểm
 - [x] Seed dữ liệu học tập (lớp 10A1, môn, TKB, điểm, bài tập) để test giao diện
 
-### 🟡 NGÀY 16 — Học sinh/PH: Đơn nghỉ & Học phí (FR2.5, FR2.6)  ⬅️ LÀM TIẾP
-- [ ] Tạo & theo dõi đơn xin nghỉ (FR2.5)
-- [ ] Thanh toán học phí VNPay/PayOS + lịch sử + biên lai (FR2.6)
+### ✅ NGÀY 16 — Học sinh/PH: Đơn nghỉ & Học phí (FR2.5, FR2.6)
+- [x] Tạo & theo dõi đơn xin nghỉ + đính kèm ảnh y tế (FR2.5)
+- [x] Thanh toán học phí VNPay/PayOS + lịch sử + biên lai (FR2.6)
+- [x] Seed loại khoản thu + hóa đơn để test; hỗ trợ `dev/simulate-paid`
 
-### NGÀY 17 — Giáo viên: Điểm danh & Điểm số (FR3.1, FR3.2)
+### 🟡 NGÀY 17 — Giáo viên: Điểm danh & Điểm số (FR3.1, FR3.2)  ⬅️ LÀM TIẾP
 - [ ] Điểm danh nhanh P/A/L + **offline cache SQLite, tự đồng bộ khi có mạng** (FR3.1, NFR4.2)
 - [ ] Nhập điểm hàng loạt + Publish (FR3.2)
 
@@ -169,6 +170,6 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 
 ---
 
-## 👉 HÔM NAY LÀM GÌ (Ngày 16 — Học sinh/PH: Đơn nghỉ & Học phí)
-1. Đơn xin nghỉ (FR2.5): tạo đơn (lý do + ảnh y tế) + theo dõi trạng thái.
-2. Học phí (FR2.6): danh sách hóa đơn + thanh toán VNPay/PayOS + lịch sử + biên lai.
+## 👉 HÔM NAY LÀM GÌ (Ngày 17 — Giáo viên: Điểm danh & Điểm số)
+1. Điểm danh nhanh P/A/L theo lớp + offline cache SQLite, tự đồng bộ khi có mạng (FR3.1, NFR4.2).
+2. Nhập điểm hàng loạt + cơ chế Nháp → Publish (FR3.2).

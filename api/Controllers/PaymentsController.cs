@@ -107,6 +107,23 @@ public class PaymentsController : ControllerBase
     }
 
     /// <summary>
+    /// GET /api/payments/status/{orderCode} — app poll trạng thái để tự phát hiện
+    /// đã thanh toán (webhook/dev-simulate cập nhật DB, app hỏi ở đây).
+    /// </summary>
+    [HttpGet("status/{orderCode}")]
+    [Authorize(Roles = "Parent,Admin,Student")]
+    public async Task<IActionResult> GetStatus(string orderCode)
+    {
+        var (result, error) = await _service.GetTransactionStatusAsync(orderCode);
+        if (error != null)
+        {
+            if (error.Contains("Không tìm thấy")) return NotFound(new { message = error });
+            return BadRequest(new { message = error });
+        }
+        return Ok(result);
+    }
+
+    /// <summary>
     /// GET|POST /api/payments/dev/simulate-paid?orderCode= — Dev giả lập Paid.
     /// Chỉ Development.
     /// </summary>

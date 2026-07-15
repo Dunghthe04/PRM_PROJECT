@@ -1,5 +1,7 @@
+using System.Text.Json;
 using Api.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace Api.Common;
 
@@ -15,10 +17,10 @@ public static class DbSeeder
     private const string DemoPassword = "123456";
 
     /// <summary>
-    /// Chạy seed. Nhận: [db] DbContext. Trả về: Task.
-    /// Thứ tự: user → liên kết phụ huynh-con → bảng tin → thông báo.
+    /// Chạy seed. Nhận: [db] DbContext, [config] cấu hình (để nạp khóa PayOS). Trả về: Task.
+    /// Thứ tự: user → liên kết phụ huynh-con → bảng tin → thông báo → học tập → học phí → cổng thanh toán.
     /// </summary>
-    public static async Task SeedAsync(AppDbContext db)
+    public static async Task SeedAsync(AppDbContext db, IConfiguration? config = null)
     {
         // 1) Tài khoản mẫu — tạo nếu chưa có (khớp theo SĐT).
         var admin = await EnsureUserAsync(db, "0900000000", "Admin Demo", UserRole.Admin);
@@ -35,6 +37,9 @@ public static class DbSeeder
 
         // 2b) Dữ liệu học tập (Ngày 15): lớp + môn + TKB + điểm + bài tập.
         await SeedAcademicAsync(db, teacher);
+
+        // 2c) Cấu hình cổng PayOS (Ngày 16) — nạp khóa từ appsettings nếu có.
+        await SeedPayOsConfigAsync(db, config);
 
         // 3) Bảng tin mẫu — chỉ seed khi CHƯA có bảng tin nào.
         if (!await db.Announcements.AnyAsync())
@@ -307,6 +312,116 @@ public static class DbSeeder
             );
             await db.SaveChangesAsync();
         }
+
+        // --- Học phí: loại khoản thu + hóa đơn cho từng HS (nếu chưa có) ---
+        var tuition = await EnsureFeeCategoryAsync(db, "Học phí Học kỳ 1", 1500000);
+        var insurance = await EnsureFeeCategoryAsync(db, "Bảo hiểm y tế", 800000);
+        await db.SaveChangesAsync();
+
+        if (!await db.FeeInvoices.AnyAsync())
+        {
+            var studentIds = await db.ClassStudents
+                .Where(cs => cs.ClassId == cls.Id)
+                .Select(cs => cs.StudentId)
+                .ToListAsync();
+
+            foreach (var sid in studentIds)
+            {
+                // 1 hóa đơn học phí chưa đóng + 1 BHYT chưa đóng cho mỗi HS.
+                db.FeeInvoices.Add(new FeeInvoice
+                {
+                    StudentId = sid,
+                    FeeCategoryId = tuition.Id,
+                    Amount = tuition.DefaultAmount,
+                    DueDate = DateTime.UtcNow.AddDays(14),
+                    Status = FeePaymentStatus.Pending,
+                    IsPaid = false,
+                    Note = "Học phí học kỳ 1 năm học 2026-2027",
+                    CreatedAt = DateTime.UtcNow.AddDays(-3),
+                });
+                db.FeeInvoices.Add(new FeeInvoice
+                {
+                    StudentId = sid,
+                    FeeCategoryId = insurance.Id,
+                    Amount = insurance.DefaultAmount,
+                    DueDate = DateTime.UtcNow.AddDays(7),
+                    Status = FeePaymentStatus.Pending,
+                    IsPaid = false,
+                    Note = "Bảo hiểm y tế năm học 2026-2027",
+                    CreatedAt = DateTime.UtcNow.AddDays(-3),
+                });
+            }
+            await db.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
+    /// Nạp/cập nhật cấu hình cổng PayOS từ appsettings (section "PayOS").
+    /// Không có khóa (thiếu ClientId/ApiKey/ChecksumKey) → bỏ qua, dùng chế độ dev stub.
+    /// </summary>
+    private static async Task SeedPayOsConfigAsync(AppDbContext db, IConfiguration? config)
+    {
+        if (config == null) return;
+
+        var clientId = config["PayOS:ClientId"];
+        var apiKey = config["PayOS:ApiKey"];
+        var checksumKey = config["PayOS:ChecksumKey"];
+
+        // Thiếu bất kỳ khóa nào → không cấu hình (giữ dev stub / giả lập).
+        if (string.IsNullOrWhiteSpace(clientId)
+            || string.IsNullOrWhiteSpace(apiKey)
+            || string.IsNullOrWhiteSpace(checksumKey))
+        {
+            return;
+        }
+
+        var configJson = JsonSerializer.Serialize(new
+        {
+            ClientId = clientId,
+            ApiKey = apiKey,
+            ChecksumKey = checksumKey,
+            ReturnUrl = config["PayOS:ReturnUrl"] ?? "",
+            CancelUrl = config["PayOS:CancelUrl"] ?? "",
+        });
+
+        var existing = await db.PaymentGatewayConfigs
+            .FirstOrDefaultAsync(c => c.Provider == "PayOS");
+
+        if (existing == null)
+        {
+            db.PaymentGatewayConfigs.Add(new PaymentGatewayConfig
+            {
+                Provider = "PayOS",
+                IsEnabled = true,
+                ConfigJson = configJson,
+                UpdatedAt = DateTime.UtcNow,
+            });
+        }
+        else
+        {
+            // Luôn đồng bộ theo appsettings để đổi khóa dễ dàng.
+            existing.IsEnabled = true;
+            existing.ConfigJson = configJson;
+            existing.UpdatedAt = DateTime.UtcNow;
+        }
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>Tạo loại khoản thu nếu tên chưa tồn tại; trả về (cũ hoặc mới).</summary>
+    private static async Task<FeeCategory> EnsureFeeCategoryAsync(
+        AppDbContext db, string name, decimal defaultAmount)
+    {
+        var cat = await db.FeeCategories.FirstOrDefaultAsync(c => c.Name == name);
+        if (cat != null) return cat;
+
+        cat = new FeeCategory
+        {
+            Name = name,
+            DefaultAmount = defaultAmount,
+            IsActive = true,
+        };
+        db.FeeCategories.Add(cat);
+        return cat;
     }
 
     /// <summary>Tạo môn học nếu Code chưa tồn tại; trả về môn (cũ hoặc mới).</summary>

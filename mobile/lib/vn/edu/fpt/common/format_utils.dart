@@ -38,4 +38,20 @@ class FormatUtils {
 
   /// Thêm số 0 phía trước cho số < 10 (vd 5 -> "05").
   static String _pad2(int n) => n.toString().padLeft(2, '0');
+
+  /// Định dạng số tiền kiểu Việt Nam (dấu chấm ngăn cách nghìn) + " ₫".
+  ///
+  /// Nhận: [amount] — số tiền.
+  /// Trả về (String): vd 1500000 -> "1.500.000 ₫".
+  static String currency(double amount) {
+    // Bỏ phần thập phân (học phí thường là số nguyên đồng).
+    final whole = amount.round().toString();
+    final buffer = StringBuffer();
+    // Chèn dấu '.' sau mỗi 3 chữ số tính từ phải sang.
+    for (int i = 0; i < whole.length; i++) {
+      if (i > 0 && (whole.length - i) % 3 == 0) buffer.write('.');
+      buffer.write(whole[i]);
+    }
+    return '$buffer ₫';
+  }
 }

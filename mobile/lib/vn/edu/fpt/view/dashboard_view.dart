@@ -6,6 +6,8 @@ import '../controller/notification_controller.dart';
 import '../model/announcement_model.dart';
 import '../model/user_model.dart';
 import 'announcement_view.dart';
+import 'fee_view.dart';
+import 'leave_request_view.dart';
 
 /// Tab Trang chủ / Dashboard (FR2.2): màn tổng quan khi mở app.
 /// Hiển thị lời chào, lối tắt theo vai trò, và bảng tin gần đây.
@@ -184,9 +186,24 @@ class _DashboardTabState extends State<DashboardTab> {
               label: 'Bảng tin',
               onTap: () => widget.onNavigateTab('announcements')),
           _ActionCard(
-              icon: Icons.assignment,
-              label: 'Bài tập',
-              onTap: () => widget.onNavigateTab('study')),
+              icon: Icons.event_busy,
+              label: 'Đơn xin nghỉ',
+              // Màn full-screen (không phải tab) → dùng Navigator.push.
+              onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => LeaveRequestView(user: widget.user),
+                    ),
+                  )),
+          _ActionCard(
+              icon: Icons.payments,
+              label: 'Học phí',
+              onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => FeeView(user: widget.user),
+                    ),
+                  )),
         ];
     }
   }
