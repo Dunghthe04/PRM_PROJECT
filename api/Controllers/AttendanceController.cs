@@ -78,19 +78,6 @@ public class AttendanceController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>POST /api/attendance/sync — mobile offline gửi nhiều bản ghi lên.</summary>
-    [HttpPost("sync")]
-    [Authorize(Roles = "Teacher,Admin")]
-    public async Task<IActionResult> Sync([FromBody] SyncAttendanceDto dto)
-    {
-        var actorId = GetCurrentUserId();
-        var role = GetCurrentUserRole();
-        if (actorId == null || role == null) return Unauthorized();
-
-        var result = await _service.SyncAsync(dto, actorId.Value, role.Value);
-        return Ok(result);
-    }
-
     /// <summary>PUT /api/attendance/{id} — sửa trạng thái 1 bản ghi.</summary>
     [HttpPut("{id:int}")]
     [Authorize(Roles = "Teacher,Admin")]

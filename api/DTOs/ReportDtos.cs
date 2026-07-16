@@ -1,13 +1,12 @@
 namespace Api.DTOs;
 
 /// <summary>
-/// DTOs báo cáo & thống kê (FR5.5 — Ngày 12 Bước 1).
-/// format=json (mặc định) | excel | pdf — Controller chọn kiểu trả về.
+/// DTOs báo cáo & thống kê (FR5.5) — trả JSON cho màn Admin.
 /// </summary>
 
 // ─── Query chung ────────────────────────────────────────────────────────────
 
-/// <summary>Tham số lọc báo cáo theo lớp / kỳ / khoảng ngày / định dạng xuất.</summary>
+/// <summary>Tham số lọc báo cáo theo lớp / kỳ / khoảng ngày.</summary>
 public class ReportQueryDto
 {
     /// <summary>Lọc theo lớp (bắt buộc với grades/attendance/fees chi tiết).</summary>
@@ -22,9 +21,6 @@ public class ReportQueryDto
     /// <summary>Khoảng ngày cho chuyên cần (mặc định: 30 ngày gần nhất).</summary>
     public DateTime? From { get; set; }
     public DateTime? To { get; set; }
-
-    /// <summary>json | excel | pdf — mặc định json.</summary>
-    public string Format { get; set; } = "json";
 }
 
 // ─── Dashboard tổng quan ────────────────────────────────────────────────────

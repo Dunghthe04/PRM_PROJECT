@@ -1,23 +1,45 @@
-// Model dữ liệu Thời khóa biểu (FR2.3) — khớp TimetableDtos.cs bên API .NET.
-//
-// Gồm 2 lớp:
-//   - TimetableSlotModel: 1 tiết học (môn, GV, thứ, tiết, phòng).
-//   - WeeklyTimetableModel: cả tuần = khoảng ngày + danh sách tiết.
+/// Model thời khóa biểu (FR2.3) — khớp `TimetableDtos` bên API .NET.
+///
+/// Quan hệ server: `TimetableSlot` → Class, Subject, Teacher (User).
+/// App nhận DTO đã flatten (có sẵn tên lớp / môn / GV).
 
-/// Một tiết học trong thời khóa biểu.
+/// Một tiết học trong tuần.
 class TimetableSlotModel {
+  /// Id bản ghi `TimetableSlot`.
   final int id;
+
+  /// FK → lớp học.
   final int classId;
-  final String className; // tên lớp
+
+  /// Tên lớp (denormalized từ server).
+  final String className;
+
+  /// FK → môn học.
   final int subjectId;
-  final String subjectName; // tên môn
-  final String subjectCode; // mã môn (vd "MATH")
+
+  /// Tên môn.
+  final String subjectName;
+
+  /// Mã môn (vd. TOAN).
+  final String subjectCode;
+
+  /// FK → giáo viên đứng lớp.
   final int teacherId;
-  final String teacherName; // tên giáo viên dạy
-  final int dayOfWeek; // 1 = Thứ Hai … 7 = Chủ Nhật
-  final String dayName; // tên thứ tiếng Việt (server trả sẵn)
-  final int period; // tiết thứ mấy trong ngày (1, 2, 3…)
-  final String room; // phòng học
+
+  /// Tên giáo viên.
+  final String teacherName;
+
+  /// Thứ ISO: 1 = Thứ Hai … 7 = Chủ Nhật.
+  final int dayOfWeek;
+
+  /// Tên thứ tiếng Việt (server trả sẵn).
+  final String dayName;
+
+  /// Số tiết trong ngày (1, 2, 3…).
+  final int period;
+
+  /// Phòng học.
+  final String room;
 
   TimetableSlotModel({
     required this.id,
@@ -34,7 +56,7 @@ class TimetableSlotModel {
     required this.room,
   });
 
-  /// Tạo [TimetableSlotModel] từ 1 phần tử JSON trong `slots`.
+  /// Parse 1 phần tử trong mảng `slots` của response tuần.
   factory TimetableSlotModel.fromJson(Map<String, dynamic> json) {
     return TimetableSlotModel(
       id: json['id'] as int,
@@ -53,11 +75,16 @@ class TimetableSlotModel {
   }
 }
 
-/// Thời khóa biểu theo tuần: khoảng ngày + tất cả tiết trong tuần.
+/// Thời khóa biểu theo tuần: khoảng ngày + danh sách tiết.
 class WeeklyTimetableModel {
-  final DateTime weekStart; // ngày đầu tuần (Thứ Hai)
-  final DateTime weekEnd; // ngày cuối tuần (Chủ Nhật)
-  final List<TimetableSlotModel> slots; // tất cả tiết học trong tuần
+  /// Ngày đầu tuần (Thứ Hai).
+  final DateTime weekStart;
+
+  /// Ngày cuối tuần (Chủ Nhật).
+  final DateTime weekEnd;
+
+  /// Tất cả tiết trong tuần (nhiều lớp nếu HS/GV có nhiều phân công).
+  final List<TimetableSlotModel> slots;
 
   WeeklyTimetableModel({
     required this.weekStart,
@@ -65,7 +92,7 @@ class WeeklyTimetableModel {
     required this.slots,
   });
 
-  /// Tạo [WeeklyTimetableModel] từ JSON WeeklyTimetableDto.
+  /// Parse `WeeklyTimetableDto` từ API.
   factory WeeklyTimetableModel.fromJson(Map<String, dynamic> json) {
     final rawSlots = (json['slots'] as List?) ?? [];
     return WeeklyTimetableModel(
@@ -79,10 +106,9 @@ class WeeklyTimetableModel {
     );
   }
 
-  /// Nhóm các tiết theo thứ (dayOfWeek) → tiện dựng UI từng ngày.
+  /// Nhóm tiết theo thứ → dựng UI từng ngày.
   ///
-  /// Trả về `Map<int, List<TimetableSlotModel>>`: key = thứ (1..7),
-  /// value = danh sách tiết trong thứ đó, đã sắp xếp theo `period` tăng dần.
+  /// Key = `dayOfWeek` (1..7); value đã sort theo `period` tăng dần.
   Map<int, List<TimetableSlotModel>> groupByDay() {
     final map = <int, List<TimetableSlotModel>>{};
     for (final slot in slots) {

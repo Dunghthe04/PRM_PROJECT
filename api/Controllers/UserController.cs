@@ -101,17 +101,6 @@ public class UserController : ControllerBase
         return Ok(user);
     }
 
-    /// <summary>
-    /// Endpoint thử nghiệm RBAC — chỉ Admin gọi được.
-    /// Không phải nghiệp vụ thật; dùng để kiểm tra [Authorize(Roles)].
-    /// </summary>
-    [HttpGet("admin-only")]
-    [Authorize(Roles = "Admin")]
-    public IActionResult AdminOnly()
-    {
-        return Ok(new { message = "Chỉ Admin mới truy cập được endpoint này." });
-    }
-
     /// <summary>Lấy thông tin user theo Id (cần JWT).</summary>
     [HttpGet("{id:int}")]
     [Authorize]

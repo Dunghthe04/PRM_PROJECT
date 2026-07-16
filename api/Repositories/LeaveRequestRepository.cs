@@ -32,6 +32,7 @@ public class LeaveRequestRepository : ILeaveRequestRepository
 
     private IQueryable<LeaveRequest> WithDetails()
         => _context.LeaveRequests
+            .AsNoTracking()
             .Include(lr => lr.Class)
             .Include(lr => lr.Student)
             .Include(lr => lr.SubmittedBy)
@@ -46,7 +47,8 @@ public class LeaveRequestRepository : ILeaveRequestRepository
     /// <inheritdoc />
     public async Task<List<LeaveRequest>> GetListAsync(int? classId, LeaveRequestStatus? status)
     {
-        var q = WithDetails().AsQueryable();
+        // Projection cột cần thiết — tránh Include nặng lần đầu.
+        var q = _context.LeaveRequests.AsNoTracking().AsQueryable();
 
         if (classId.HasValue)
             q = q.Where(lr => lr.ClassId == classId.Value);
@@ -54,9 +56,55 @@ public class LeaveRequestRepository : ILeaveRequestRepository
         if (status.HasValue)
             q = q.Where(lr => lr.Status == status.Value);
 
-        return await q
+        var rows = await q
             .OrderByDescending(lr => lr.CreatedAt)
+            .Select(lr => new
+            {
+                lr.Id,
+                lr.StudentId,
+                StudentName = lr.Student.FullName,
+                StudentPhone = lr.Student.Phone,
+                lr.ClassId,
+                ClassName = lr.Class.Name,
+                lr.SubmittedByUserId,
+                SubmittedByName = lr.SubmittedBy.FullName,
+                lr.Date,
+                lr.Reason,
+                lr.MedicalCertificateUrl,
+                lr.Status,
+                lr.ApprovedByTeacherId,
+                ApprovedByTeacherName = lr.ApprovedByTeacher != null
+                    ? lr.ApprovedByTeacher.FullName
+                    : null,
+                lr.RejectionReason,
+                lr.CreatedAt,
+                lr.UpdatedAt,
+                lr.ReviewedAt,
+            })
             .ToListAsync();
+
+        return rows.Select(r => new LeaveRequest
+        {
+            Id = r.Id,
+            StudentId = r.StudentId,
+            ClassId = r.ClassId,
+            SubmittedByUserId = r.SubmittedByUserId,
+            Date = r.Date,
+            Reason = r.Reason,
+            MedicalCertificateUrl = r.MedicalCertificateUrl,
+            Status = r.Status,
+            ApprovedByTeacherId = r.ApprovedByTeacherId,
+            RejectionReason = r.RejectionReason,
+            CreatedAt = r.CreatedAt,
+            UpdatedAt = r.UpdatedAt,
+            ReviewedAt = r.ReviewedAt,
+            Student = new User { Id = r.StudentId, FullName = r.StudentName, Phone = r.StudentPhone },
+            Class = new Class { Id = r.ClassId, Name = r.ClassName },
+            SubmittedBy = new User { Id = r.SubmittedByUserId, FullName = r.SubmittedByName },
+            ApprovedByTeacher = r.ApprovedByTeacherId == null
+                ? null
+                : new User { Id = r.ApprovedByTeacherId.Value, FullName = r.ApprovedByTeacherName ?? "" },
+        }).ToList();
     }
 
     /// <inheritdoc />

@@ -5,7 +5,7 @@ namespace Api.DTOs;
 // ─── FR3.1 — Điểm danh (Ngày 7 Bước 2) ─────────────────────────────────────
 //
 // DTO định nghĩa dữ liệu vào/ra cho API điểm danh P/A/L.
-// Luồng: GV batch điểm danh → HS/PH xem lịch sử → sync offline (mobile).
+// Luồng: GV batch điểm danh → HS/PH xem lịch sử chuyên cần.
 
 /// <summary>Thông tin 1 bản ghi điểm danh trả về client.</summary>
 public class AttendanceDto
@@ -27,7 +27,6 @@ public class AttendanceDto
     public int RecordedByTeacherId { get; set; }
     public string RecordedByTeacherName { get; set; } = string.Empty;
 
-    public string? ClientRecordId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
@@ -103,26 +102,6 @@ public class UpdateAttendanceDto
     public AttendanceStatus Status { get; set; }
 }
 
-/// <summary>
-/// Body POST /api/attendance/sync — mobile offline gửi nhiều bản ghi lên.
-/// Mỗi item có ClientRecordId để tránh trùng khi sync lại.
-/// </summary>
-public class SyncAttendanceDto
-{
-    public List<SyncAttendanceItemDto> Records { get; set; } = new();
-}
-
-/// <summary>1 bản ghi điểm danh từ mobile offline.</summary>
-public class SyncAttendanceItemDto
-{
-    /// <summary>UUID/id do app tạo offline — bắt buộc.</summary>
-    public string ClientRecordId { get; set; } = string.Empty;
-    public int ClassId { get; set; }
-    public int StudentId { get; set; }
-    public DateTime Date { get; set; }
-    public AttendanceStatus Status { get; set; }
-}
-
 /// <summary>Response sau POST /api/attendance/batch.</summary>
 public class BatchAttendanceResultDto
 {
@@ -130,20 +109,4 @@ public class BatchAttendanceResultDto
     public int CreatedCount { get; set; }
     public int UpdatedCount { get; set; }
     public List<AttendanceDto> Records { get; set; } = new();
-}
-
-/// <summary>Response sau POST /api/attendance/sync.</summary>
-public class SyncAttendanceResultDto
-{
-    public string Message { get; set; } = string.Empty;
-    public int SyncedCount { get; set; }
-    public int SkippedCount { get; set; }
-    public List<AttendanceSyncErrorDto> Errors { get; set; } = new();
-}
-
-/// <summary>1 bản ghi sync thất bại — theo ClientRecordId.</summary>
-public class AttendanceSyncErrorDto
-{
-    public string ClientRecordId { get; set; } = string.Empty;
-    public string Reason { get; set; } = string.Empty;
 }

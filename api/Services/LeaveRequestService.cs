@@ -65,7 +65,7 @@ public class LeaveRequestService : ILeaveRequestService
         if (!query.ClassId.HasValue)
             return (null, "classId là bắt buộc.");
 
-        if (await _classRepository.GetByIdAsync(query.ClassId.Value) == null)
+        if (!await _context.Classes.AsNoTracking().AnyAsync(c => c.Id == query.ClassId.Value))
             return (null, "Không tìm thấy lớp học.");
 
         var permError = await VerifyTeacherCanReviewAsync(actorId, actorRole, query.ClassId.Value);
@@ -273,8 +273,10 @@ public class LeaveRequestService : ILeaveRequestService
         if (role != UserRole.Teacher)
             return "Không có quyền duyệt đơn nghỉ.";
 
-        var assignments = await _teacherAssignmentRepository.GetByTeacherAsync(actorId);
-        if (!assignments.Any(ta => ta.ClassId == classId))
+        // Chỉ kiểm tra tồn tại phân công — không load cả danh sách lớp/môn.
+        var assigned = await _teacherAssignmentRepository
+            .TeacherAssignedToClassAsync(actorId, classId);
+        if (!assigned)
             return "Bạn chưa được phân công dạy lớp này.";
 
         return null;

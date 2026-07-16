@@ -26,9 +26,6 @@ public interface IAttendanceService
     Task<(BatchAttendanceResultDto? Result, string? Error)> BatchUpsertAsync(
         BatchAttendanceDto dto, int teacherId, UserRole actorRole);
 
-    /// <summary>POST /api/attendance/sync — đồng bộ offline từ mobile.</summary>
-    Task<SyncAttendanceResultDto> SyncAsync(SyncAttendanceDto dto, int teacherId, UserRole actorRole);
-
     /// <summary>PUT /api/attendance/{id} — sửa 1 bản ghi.</summary>
     Task<(AttendanceDto? Result, string? Error)> UpdateAsync(
         int id, UpdateAttendanceDto dto, int actorId, UserRole actorRole);
@@ -213,113 +210,6 @@ public class AttendanceService : IAttendanceService
     }
 
     /// <inheritdoc />
-    public async Task<SyncAttendanceResultDto> SyncAsync(
-        SyncAttendanceDto dto, int teacherId, UserRole actorRole)
-    {
-        var result = new SyncAttendanceResultDto();
-
-        if (dto.Records.Count == 0)
-        {
-            result.Message = "Không có bản ghi để đồng bộ.";
-            return result;
-        }
-
-        foreach (var item in dto.Records)
-        {
-            if (string.IsNullOrWhiteSpace(item.ClientRecordId))
-            {
-                result.Errors.Add(new AttendanceSyncErrorDto
-                {
-                    ClientRecordId = item.ClientRecordId ?? string.Empty,
-                    Reason = "ClientRecordId là bắt buộc."
-                });
-                continue;
-            }
-
-            var clientId = item.ClientRecordId.Trim();
-
-            var existingByClient = await _attendanceRepository.FindByClientRecordIdAsync(clientId);
-            if (existingByClient != null)
-            {
-                result.SkippedCount++;
-                continue;
-            }
-
-            if (item.ClassId <= 0)
-            {
-                result.Errors.Add(new AttendanceSyncErrorDto
-                {
-                    ClientRecordId = clientId,
-                    Reason = "classId không hợp lệ."
-                });
-                continue;
-            }
-
-            var classError = await ValidateClassExistsAsync(item.ClassId);
-            if (classError != null)
-            {
-                result.Errors.Add(new AttendanceSyncErrorDto
-                {
-                    ClientRecordId = clientId,
-                    Reason = classError
-                });
-                continue;
-            }
-
-            var permError = await VerifyTeacherCanRecordAsync(teacherId, actorRole, item.ClassId);
-            if (permError != null)
-            {
-                result.Errors.Add(new AttendanceSyncErrorDto
-                {
-                    ClientRecordId = clientId,
-                    Reason = permError
-                });
-                continue;
-            }
-
-            if (!await _classRepository.StudentInClassAsync(item.ClassId, item.StudentId))
-            {
-                result.Errors.Add(new AttendanceSyncErrorDto
-                {
-                    ClientRecordId = clientId,
-                    Reason = "Học sinh không thuộc lớp này."
-                });
-                continue;
-            }
-
-            var date = item.Date.Date;
-            var existingByKey = await _attendanceRepository.FindByKeyAsync(item.ClassId, item.StudentId, date);
-
-            if (existingByKey != null)
-            {
-                existingByKey.Status = item.Status;
-                existingByKey.RecordedByTeacherId = teacherId;
-                existingByKey.ClientRecordId ??= clientId;
-                existingByKey.UpdatedAt = DateTime.UtcNow;
-                await _attendanceRepository.UpdateAsync(existingByKey);
-                result.SyncedCount++;
-                continue;
-            }
-
-            var attendance = new Attendance
-            {
-                ClassId = item.ClassId,
-                StudentId = item.StudentId,
-                Date = date,
-                Status = item.Status,
-                RecordedByTeacherId = teacherId,
-                ClientRecordId = clientId,
-                CreatedAt = DateTime.UtcNow
-            };
-            await _attendanceRepository.CreateAsync(attendance);
-            result.SyncedCount++;
-        }
-
-        result.Message = $"Đồng bộ xong: {result.SyncedCount} bản ghi, {result.SkippedCount} bỏ qua (đã có), {result.Errors.Count} lỗi.";
-        return result;
-    }
-
-    /// <inheritdoc />
     public async Task<(AttendanceDto? Result, string? Error)> UpdateAsync(
         int id, UpdateAttendanceDto dto, int actorId, UserRole actorRole)
     {
@@ -394,7 +284,6 @@ public class AttendanceService : IAttendanceService
         Status = a.Status.ToString(),
         RecordedByTeacherId = a.RecordedByTeacherId,
         RecordedByTeacherName = a.RecordedByTeacher?.FullName ?? string.Empty,
-        ClientRecordId = a.ClientRecordId,
         CreatedAt = a.CreatedAt,
         UpdatedAt = a.UpdatedAt
     };

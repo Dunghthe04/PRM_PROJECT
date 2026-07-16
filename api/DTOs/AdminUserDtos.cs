@@ -83,37 +83,3 @@ public class AdminResetPasswordDto
 {
     public string NewPassword { get; set; } = string.Empty;
 }
-
-/// <summary>
-/// Response POST /api/users/import — thống kê kết quả import Excel.
-/// </summary>
-public class ImportUsersResultDto
-{
-    public int TotalRows { get; set; }
-    public int SuccessCount { get; set; }
-    public int FailedCount { get; set; }
-
-    /// <summary>Chi tiết từng dòng lỗi (số dòng + lý do).</summary>
-    public List<ImportUserErrorDto> Errors { get; set; } = new();
-}
-
-/// <summary>Một dòng import thất bại — giúp Admin sửa file Excel.</summary>
-public class ImportUserErrorDto
-{
-    public int RowNumber { get; set; }
-    public string Phone { get; set; } = string.Empty;
-    public string Reason { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// Một dòng trong file Excel mẫu import (map từ sheet).
-/// Dùng nội bộ Service khi đọc file — không expose trực tiếp qua API.
-/// </summary>
-public class ImportUserRowDto
-{
-    public string Phone { get; set; } = string.Empty;
-    public string FullName { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-    public UserRole Role { get; set; } = UserRole.Student;
-    public string? Email { get; set; }
-}

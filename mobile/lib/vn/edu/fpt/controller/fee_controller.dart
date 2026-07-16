@@ -43,30 +43,6 @@ class FeeController {
     }
   }
 
-  /// Lấy lịch sử giao dịch — GET /payments/history?studentId=.
-  ///
-  /// Nhận: [studentId] (chỉ PH) lọc theo con; null = tất cả.
-  Future<(List<PaymentTransactionModel>?, String?)> getHistory({
-    int? studentId,
-  }) async {
-    try {
-      final response = await _apiClient.dio.get(
-        '/payments/history',
-        queryParameters: studentId == null ? null : {'studentId': studentId},
-      );
-      if (response.statusCode == 200) {
-        final list = (response.data as List)
-            .map((e) =>
-                PaymentTransactionModel.fromJson(e as Map<String, dynamic>))
-            .toList();
-        return (list, null);
-      }
-      return (null, 'Không tải được lịch sử (mã ${response.statusCode}).');
-    } on DioException catch (e) {
-      return (null, _extractError(e));
-    }
-  }
-
   /// Tạo giao dịch thanh toán qua cổng.
   ///
   /// Nhận:

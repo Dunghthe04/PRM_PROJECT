@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
-    <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="FirebaseAdmin" Version="3.6.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.6" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.25" />
@@ -17,8 +16,14 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="QuestPDF" Version="2026.7.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
+
+  <!-- Tránh MSB3027: Api.exe đang chạy khóa bin\ → tự tắt trước khi build. -->
+  <Target Name="StopRunningApiBeforeBuild" BeforeTargets="BeforeBuild">
+    <Exec Command="taskkill /F /IM Api.exe /T &gt;NUL 2&gt;&amp;1 &amp; exit /B 0"
+          IgnoreExitCode="true"
+          ContinueOnError="true" />
+  </Target>
 
 </Project>

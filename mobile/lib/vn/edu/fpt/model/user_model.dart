@@ -1,15 +1,32 @@
-/// Model đại diện 1 user — khớp với UserDto bên API .NET.
+/// Model tài khoản người dùng — khớp `UserDto` bên API .NET.
+///
+/// Quan hệ phía server: bảng `Users`; liên kết PH↔HS qua `StudentParents`
+/// (Switch Profile dùng API `/account/children`, không nhúng trong model này).
 class UserModel {
+  /// Khóa chính user trên server.
   final int id;
-  final String phone;
-  final String fullName;
-  final String avatarUrl;
-  final String? email; // có thể null
-  final bool isPhoneVerified;
-  final bool isLocked;
-  final String role; // "Admin" | "Teacher" | "Parent" | "Student"
 
-  // Constructor: 'required' = bắt buộc truyền khi tạo object.
+  /// SĐT đăng nhập (định danh chính).
+  final String phone;
+
+  /// Họ tên hiển thị.
+  final String fullName;
+
+  /// URL avatar (có thể rỗng).
+  final String avatarUrl;
+
+  /// Email liên hệ — tuỳ chọn, không dùng để login.
+  final String? email;
+
+  /// Đã xác thực OTP đăng ký hay chưa.
+  final bool isPhoneVerified;
+
+  /// Tài khoản bị Admin khóa → không cho đăng nhập.
+  final bool isLocked;
+
+  /// Vai trò RBAC: `Admin` | `Teacher` | `Parent` | `Student`.
+  final String role;
+
   UserModel({
     required this.id,
     required this.phone,
@@ -21,24 +38,21 @@ class UserModel {
     required this.role,
   });
 
-/// factory fromJson: "nhà máy" tạo UserModel từ Map JSON mà API trả về.
-/// json là dữ liệu dạng {key: value} sau khi Dio parse response.
-/// Dio parse json -> map -> chuyển sang model
+  /// Tạo [UserModel] từ JSON response API (`UserDto`).
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id'] as int,
       phone: json['phone'] as String,
       fullName: json['fullName'] as String,
-      // ?? '' : nếu null thì dùng chuỗi rỗng (tránh crash)
       avatarUrl: json['avatarUrl'] as String? ?? '',
       email: json['email'] as String?,
       isPhoneVerified: json['isPhoneVerified'] as bool,
-      isLocked: json['isLocked'] as bool,
+      isLocked: json['isLocked'] as bool? ?? false,
       role: json['role'] as String,
     );
   }
 
-  /// Nhãn vai trò bằng tiếng Việt để hiển thị (role gốc là tiếng Anh).
+  /// Nhãn vai trò tiếng Việt để hiển thị UI.
   String get roleLabel {
     switch (role) {
       case 'Admin':

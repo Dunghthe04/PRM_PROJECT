@@ -1,20 +1,48 @@
-/// Model 1 đơn xin nghỉ (FR2.5) — khớp LeaveRequestDto bên API .NET.
-/// HS/PH tạo & theo dõi; GV duyệt/từ chối.
+/// Một đơn xin nghỉ (FR2.5 / FR3.3) — khớp `LeaveRequestDto` bên API.
+///
+/// Quan hệ server: `LeaveRequest` → Class, Student, SubmittedBy, ApprovedByTeacher.
 class LeaveRequestModel {
+  /// Id đơn.
   final int id;
+
+  /// FK → lớp của học sinh xin nghỉ.
   final int classId;
+
+  /// Tên lớp.
   final String className;
+
+  /// FK → học sinh xin nghỉ.
   final int studentId;
-  final String studentName; // tên HS (hữu ích khi PH có nhiều con)
-  final String submittedByName; // người nộp đơn (HS hoặc PH)
-  final DateTime date; // ngày xin nghỉ
-  final String reason; // lý do
-  final String? medicalCertificateUrl; // URL ảnh y tế đính kèm (nếu có)
-  final String status; // Pending | Approved | Rejected
-  final String? approvedByTeacherName; // GV đã xử lý
-  final String? rejectionReason; // lý do từ chối (nếu bị từ chối)
-  final DateTime createdAt; // thời điểm nộp
-  final DateTime? reviewedAt; // thời điểm GV xử lý
+
+  /// Tên HS (PH có nhiều con cần phân biệt).
+  final String studentName;
+
+  /// Tên người nộp đơn (HS tự nộp hoặc PH nộp hộ).
+  final String submittedByName;
+
+  /// Ngày xin nghỉ.
+  final DateTime date;
+
+  /// Lý do xin nghỉ.
+  final String reason;
+
+  /// URL ảnh giấy y tế (nếu có).
+  final String? medicalCertificateUrl;
+
+  /// `Pending` | `Approved` | `Rejected`.
+  final String status;
+
+  /// Tên GV đã xử lý — null khi còn chờ duyệt.
+  final String? approvedByTeacherName;
+
+  /// Lý do từ chối — chỉ khi Rejected.
+  final String? rejectionReason;
+
+  /// Thời điểm nộp đơn.
+  final DateTime createdAt;
+
+  /// Thời điểm GV duyệt/từ chối.
+  final DateTime? reviewedAt;
 
   LeaveRequestModel({
     required this.id,
@@ -33,10 +61,10 @@ class LeaveRequestModel {
     this.reviewedAt,
   });
 
-  /// Còn chờ duyệt → mới cho phép hủy đơn.
+  /// Còn chờ duyệt → cho phép hủy đơn.
   bool get isPending => status == 'Pending';
 
-  /// Nhãn trạng thái tiếng Việt để hiển thị.
+  /// Nhãn trạng thái tiếng Việt.
   String get statusLabel {
     switch (status) {
       case 'Pending':
@@ -50,7 +78,7 @@ class LeaveRequestModel {
     }
   }
 
-  /// Tạo [LeaveRequestModel] từ JSON (LeaveRequestDto).
+  /// Parse từ JSON `LeaveRequestDto`.
   factory LeaveRequestModel.fromJson(Map<String, dynamic> json) {
     return LeaveRequestModel(
       id: json['id'] as int,
@@ -65,8 +93,8 @@ class LeaveRequestModel {
       status: json['status'] as String? ?? 'Pending',
       approvedByTeacherName: json['approvedByTeacherName'] as String?,
       rejectionReason: json['rejectionReason'] as String?,
-      createdAt:
-          DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.now(),
       reviewedAt: DateTime.tryParse(json['reviewedAt'] as String? ?? ''),
     );
   }

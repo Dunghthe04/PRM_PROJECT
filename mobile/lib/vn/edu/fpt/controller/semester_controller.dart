@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import '../service/api_client.dart';
 
-/// Kỳ học (GET /semesters) — dùng lọc TKB / điểm.
+/// Kỳ học (GET /semesters) — dùng lọc TKB / điểm / lớp GV.
 class SemesterItem {
   final int id;
   final String name;
@@ -36,7 +36,19 @@ class SemesterItem {
 class SemesterController {
   final ApiClient _api = ApiClient();
 
-  Future<(List<SemesterItem>?, String?)> list() async {
+  /// Cache RAM — tránh gọi /semesters lặp lại trên mọi màn.
+  static List<SemesterItem>? _cache;
+  static DateTime? _cachedAt;
+  static const _ttl = Duration(minutes: 10);
+
+  Future<(List<SemesterItem>?, String?)> list({bool forceRefresh = false}) async {
+    if (!forceRefresh &&
+        _cache != null &&
+        _cachedAt != null &&
+        DateTime.now().difference(_cachedAt!) < _ttl) {
+      return (List<SemesterItem>.from(_cache!), null);
+    }
+
     try {
       final res = await _api.dio.get('/semesters');
       if (res.statusCode == 200) {
@@ -44,6 +56,8 @@ class SemesterController {
             .map((e) => SemesterItem.fromJson(e as Map<String, dynamic>))
             .toList();
         list.sort((a, b) => b.startDate.compareTo(a.startDate));
+        _cache = list;
+        _cachedAt = DateTime.now();
         return (list, null);
       }
       return (null, 'Không tải được học kỳ.');
@@ -52,25 +66,6 @@ class SemesterController {
       if (data is Map && data['message'] is String) {
         return (null, data['message'] as String);
       }
-      return (null, 'Lỗi kết nối: ${e.message}');
-    }
-  }
-
-  /// Lớp theo kỳ — GET /classes?semesterId= → dùng lọc slot TKB.
-  Future<(Set<int>?, String?)> classIdsForSemester(int semesterId) async {
-    try {
-      final res = await _api.dio.get(
-        '/classes',
-        queryParameters: {'semesterId': semesterId},
-      );
-      if (res.statusCode == 200) {
-        final ids = (res.data as List)
-            .map((e) => (e as Map)['id'] as int)
-            .toSet();
-        return (ids, null);
-      }
-      return (null, 'Không tải được lớp theo kỳ.');
-    } on DioException catch (e) {
       return (null, 'Lỗi kết nối: ${e.message}');
     }
   }

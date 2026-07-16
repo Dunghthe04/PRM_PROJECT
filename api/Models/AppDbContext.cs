@@ -2,57 +2,111 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Api.Models;
 
+/// <summary>
+/// DbContext chính của FSchool — đăng ký entity và cấu hình quan hệ / index / precision.
+/// <para>
+/// Sơ đồ quan hệ chính:
+/// User ↔ StudentParent (N–N PH–HS) · Class ↔ ClassStudent (N–N lớp–HS) ·
+/// TeacherAssignment (GV–Lớp–Môn) · TimetableSlot · Attendance · Grade ·
+/// LeaveRequest · Announcement / Notification · FeeInvoice → PaymentTransaction.
+/// </para>
+/// Hầu hết FK dùng <c>DeleteBehavior.Restrict</c> để tránh xóa dây chuyền ngoài ý muốn;
+/// một số quan hệ phụ (Notification, UserDevice, OTP, Submission→Assignment) dùng Cascade.
+/// </summary>
 public class AppDbContext : DbContext
 {
+    /// <summary>Khởi tạo context với options (connection string từ DI).</summary>
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
+    /// <summary>Tài khoản người dùng (Admin / Teacher / Parent / Student).</summary>
     public DbSet<User> Users { get; set; }
+
+    /// <summary>Liên kết N–N Phụ huynh ↔ Học sinh (Switch Profile).</summary>
     public DbSet<StudentParent> StudentParents { get; set; }
+
+    /// <summary>OTP xác thực SĐT / quên mật khẩu.</summary>
     public DbSet<PasswordResetOtp> PasswordResetOtps { get; set; }
-    
+
+    /// <summary>Danh mục học kỳ.</summary>
     public DbSet<Semester> Semesters { get; set; }
+
+    /// <summary>Danh mục môn học.</summary>
     public DbSet<Subject> Subjects { get; set; }
+
+    /// <summary>Lớp học theo kỳ.</summary>
     public DbSet<Class> Classes { get; set; }
+
+    /// <summary>Gán học sinh vào lớp.</summary>
     public DbSet<ClassStudent> ClassStudents { get; set; }
+
+    /// <summary>Phân công GV dạy lớp + môn.</summary>
     public DbSet<TeacherAssignment> TeacherAssignments { get; set; }
+
+    /// <summary>Thời khóa biểu theo tiết / tuần.</summary>
     public DbSet<TimetableSlot> TimetableSlots { get; set; }
 
+    /// <summary>Điểm danh P/A/L.</summary>
     public DbSet<Attendance> Attendances { get; set; }
+
+    /// <summary>Bài tập (giữ DB; UI app đã bỏ).</summary>
     public DbSet<Assignment> Assignments { get; set; }
+
+    /// <summary>Bài nộp gắn Assignment.</summary>
     public DbSet<Submission> Submissions { get; set; }
+
+    /// <summary>Điểm số (Nháp → Publish).</summary>
     public DbSet<Grade> Grades { get; set; }
 
+    /// <summary>Đơn xin nghỉ học.</summary>
     public DbSet<LeaveRequest> LeaveRequests { get; set; }
+
+    /// <summary>Bảng tin toàn trường / theo lớp.</summary>
     public DbSet<Announcement> Announcements { get; set; }
+
+    /// <summary>Thông báo in-app cá nhân.</summary>
     public DbSet<Notification> Notifications { get; set; }
+
+    /// <summary>FCM device token.</summary>
     public DbSet<UserDevice> UserDevices { get; set; }
 
+    /// <summary>Loại khoản thu.</summary>
     public DbSet<FeeCategory> FeeCategories { get; set; }
+
+    /// <summary>Hóa đơn học phí theo học sinh.</summary>
     public DbSet<FeeInvoice> FeeInvoices { get; set; }
+
+    /// <summary>Giao dịch cổng thanh toán.</summary>
     public DbSet<PaymentTransaction> PaymentTransactions { get; set; }
+
+    /// <summary>Cấu hình VNPay / PayOS.</summary>
     public DbSet<PaymentGatewayConfig> PaymentGatewayConfigs { get; set; }
 
+    /// <summary>
+    /// Cấu hình Fluent API: khóa kép, FK, index unique, precision tiền tệ.
+    /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Many-to-Many: Student - Parent
+        // ─── StudentParent: N–N Phụ huynh ↔ Học sinh ─────────────────────
         modelBuilder.Entity<StudentParent>()
             .HasKey(sp => new { sp.StudentId, sp.ParentId });
 
+        // Phía Học sinh: ParentLinks = danh sách PH gắn với HS
         modelBuilder.Entity<StudentParent>()
             .HasOne(sp => sp.Student)
             .WithMany(u => u.ParentLinks)
             .HasForeignKey(sp => sp.StudentId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Phía Phụ huynh: ChildLinks = danh sách con
         modelBuilder.Entity<StudentParent>()
             .HasOne(sp => sp.Parent)
             .WithMany(u => u.ChildLinks)
             .HasForeignKey(sp => sp.ParentId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Many-to-Many: Class - Student
+        // ─── ClassStudent: N–N Lớp ↔ Học sinh ─────────────────────────────
         modelBuilder.Entity<ClassStudent>()
             .HasKey(cs => new { cs.ClassId, cs.StudentId });
 
@@ -68,13 +122,17 @@ public class AppDbContext : DbContext
             .HasForeignKey(cs => cs.StudentId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Prevent cascading deletes on TeacherAssignment
+        // Tra cứu lớp theo học sinh (TKB / điểm) — PK đang là (ClassId, StudentId)
+        modelBuilder.Entity<ClassStudent>()
+            .HasIndex(cs => cs.StudentId);
+
+        // ─── TeacherAssignment: GV – Lớp – Môn ────────────────────────────
         modelBuilder.Entity<TeacherAssignment>()
             .HasOne(ta => ta.Teacher)
             .WithMany()
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Prevent cascading deletes on Assignments and Submissions to avoid cycles
+        // ─── Assignment / Submission ───────────────────────────────────────
         modelBuilder.Entity<Assignment>()
             .HasOne(a => a.CreatedByTeacher)
             .WithMany()
@@ -114,6 +172,7 @@ public class AppDbContext : DbContext
             .HasForeignKey(s => s.GradedByTeacherId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // ─── Grade ─────────────────────────────────────────────────────────
         modelBuilder.Entity<Grade>()
             .HasOne(g => g.Student)
             .WithMany()
@@ -142,7 +201,8 @@ public class AppDbContext : DbContext
             .HasIndex(g => new { g.StudentId, g.ClassId, g.SubjectId, g.SemesterId, g.AssessmentType })
             .IsUnique();
 
-        // Điểm danh: mỗi HS chỉ 1 bản ghi / lớp / ngày
+        // ─── Attendance ────────────────────────────────────────────────────
+        // Mỗi HS chỉ 1 bản ghi / lớp / ngày
         modelBuilder.Entity<Attendance>()
             .HasIndex(a => new { a.ClassId, a.StudentId, a.Date })
             .IsUnique();
@@ -165,11 +225,13 @@ public class AppDbContext : DbContext
             .HasForeignKey(a => a.RecordedByTeacherId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Di sản offline sync — unique khi ClientRecordId có giá trị
         modelBuilder.Entity<Attendance>()
             .HasIndex(a => a.ClientRecordId)
             .IsUnique()
             .HasFilter("[ClientRecordId] IS NOT NULL");
-            
+
+        // ─── LeaveRequest ──────────────────────────────────────────────────
         modelBuilder.Entity<LeaveRequest>()
             .HasOne(lr => lr.Student)
             .WithMany()
@@ -191,7 +253,8 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(lr => lr.ApprovedByTeacherId)
             .OnDelete(DeleteBehavior.Restrict);
-            
+
+        // ─── Announcement / Notification / UserDevice ──────────────────────
         modelBuilder.Entity<Announcement>()
             .HasOne(a => a.CreatedBy)
             .WithMany()
@@ -228,7 +291,7 @@ public class AppDbContext : DbContext
             .HasForeignKey(d => d.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Email unique khi có giá trị; Phone bắt buộc + unique (định danh login)
+        // ─── User: unique Phone / Email ────────────────────────────────────
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Email)
             .IsUnique()
@@ -242,6 +305,7 @@ public class AppDbContext : DbContext
             .Property(u => u.Phone)
             .IsRequired();
 
+        // ─── OTP ───────────────────────────────────────────────────────────
         modelBuilder.Entity<PasswordResetOtp>()
             .HasOne(o => o.User)
             .WithMany()
@@ -254,7 +318,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<PasswordResetOtp>()
             .HasIndex(o => new { o.UserId, o.Purpose, o.IsUsed });
 
-        // TimetableSlot: 1 lớp không trùng tiết trong cùng thứ
+        // ─── TimetableSlot: 1 lớp không trùng tiết trong cùng thứ ──────────
         modelBuilder.Entity<TimetableSlot>()
             .HasIndex(t => new { t.ClassId, t.DayOfWeek, t.Period })
             .IsUnique();
@@ -277,7 +341,7 @@ public class AppDbContext : DbContext
             .HasForeignKey(t => t.TeacherId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Học phí: decimal(18,2) — tránh cắt số tiền (cảnh báo EF từ Ngày 1)
+        // ─── Học phí: decimal(18,2) ────────────────────────────────────────
         modelBuilder.Entity<FeeCategory>()
             .Property(f => f.DefaultAmount)
             .HasPrecision(18, 2);

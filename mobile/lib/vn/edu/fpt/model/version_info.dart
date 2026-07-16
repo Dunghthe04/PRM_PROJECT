@@ -1,10 +1,18 @@
-/// Model chứa thông tin phiên bản do API trả về (GET /api/app/version).
-/// Dùng cho tính năng Force Update (bắt cập nhật) — FR4.4.
+/// Thông tin phiên bản app từ API (`GET /api/app/version`) — Force Update FR4.4.
+///
+/// Không có quan hệ entity DB; response cấu hình từ `appsettings`.
 class VersionInfo {
-  final String latestVersion; // bản mới nhất hiện có trên store
-  final String minSupportedVersion; // bản tối thiểu còn được phép dùng
-  final String updateUrl; // link tải/cập nhật (mở khi bấm "Cập nhật ngay")
-  final String message; // thông báo hiển thị cho user trong dialog
+  /// Bản mới nhất trên store.
+  final String latestVersion;
+
+  /// Bản tối thiểu còn được phép chạy.
+  final String minSupportedVersion;
+
+  /// Link mở store / trang cập nhật.
+  final String updateUrl;
+
+  /// Thông báo hiển thị trong dialog bắt cập nhật.
+  final String message;
 
   VersionInfo({
     required this.latestVersion,
@@ -13,15 +21,7 @@ class VersionInfo {
     required this.message,
   });
 
-  /// factory fromJson: tạo [VersionInfo] từ Map JSON của response.
-  ///
-  /// Nhận:
-  ///   - [json]: Map dữ liệu sau khi Dio parse (vd
-  ///     {"latestVersion": "1.0.0", "minSupportedVersion": "1.0.0", ...}).
-  /// Trả về: một object [VersionInfo] đã điền đủ field.
-  ///
-  /// Mọi field đều có giá trị mặc định (?? ...) để tránh crash nếu
-  /// server thiếu key nào đó.
+  /// Parse JSON response version check (mọi field có fallback an toàn).
   factory VersionInfo.fromJson(Map<String, dynamic> json) {
     return VersionInfo(
       latestVersion: json['latestVersion'] as String? ?? '1.0.0',

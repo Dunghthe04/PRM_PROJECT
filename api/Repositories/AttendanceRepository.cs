@@ -26,16 +26,13 @@ public interface IAttendanceRepository
     /// </summary>
     Task<Attendance?> FindByKeyAsync(int classId, int studentId, DateTime date);
 
-    /// <summary>Tìm theo ClientRecordId — tránh trùng khi sync offline.</summary>
-    Task<Attendance?> FindByClientRecordIdAsync(string clientRecordId);
-
     /// <summary>Thêm bản ghi mới.</summary>
     Task<Attendance> CreateAsync(Attendance attendance);
 
     /// <summary>Cập nhật bản ghi.</summary>
     Task UpdateAsync(Attendance attendance);
 
-    /// <summary>Lưu nhiều thay đổi trong 1 transaction (batch/sync).</summary>
+    /// <summary>Lưu nhiều thay đổi trong 1 transaction (batch).</summary>
     Task SaveChangesAsync();
 }
 
@@ -112,13 +109,6 @@ public class AttendanceRepository : IAttendanceRepository
         var day = NormalizeDate(date);
         return await _context.Attendances.FirstOrDefaultAsync(a =>
             a.ClassId == classId && a.StudentId == studentId && a.Date == day);
-    }
-
-    /// <inheritdoc />
-    public async Task<Attendance?> FindByClientRecordIdAsync(string clientRecordId)
-    {
-        return await _context.Attendances
-            .FirstOrDefaultAsync(a => a.ClientRecordId == clientRecordId);
     }
 
     /// <inheritdoc />

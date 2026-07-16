@@ -33,7 +33,7 @@ public class NotificationRepository : INotificationRepository
         var page = query.Page < 1 ? 1 : query.Page;
         var pageSize = query.PageSize < 1 ? 20 : Math.Min(query.PageSize, MaxPageSize);
 
-        var q = _context.Notifications.Where(n => n.UserId == userId);
+        var q = _context.Notifications.AsNoTracking().Where(n => n.UserId == userId);
         var total = await q.CountAsync();
 
         var items = await q
@@ -46,7 +46,8 @@ public class NotificationRepository : INotificationRepository
     }
 
     public async Task<int> GetUnreadCountAsync(int userId)
-        => await _context.Notifications.CountAsync(n => n.UserId == userId && !n.IsRead);
+        => await _context.Notifications.AsNoTracking()
+            .CountAsync(n => n.UserId == userId && !n.IsRead);
 
     public async Task<Notification?> GetByIdAsync(int id)
         => await _context.Notifications.FirstOrDefaultAsync(n => n.Id == id);

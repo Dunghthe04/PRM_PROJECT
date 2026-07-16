@@ -6,7 +6,10 @@ import '../controller/semester_controller.dart';
 import '../controller/timetable_controller.dart';
 import '../model/timetable_model.dart';
 
-/// Thời khóa biểu theo tuần (FR2.3) — lọc kỳ + xem theo ngày + giờ mỗi tiết.
+/// Thời khóa biểu theo tuần (FR2.3) — chọn kỳ rồi mới tải TKB.
+///
+/// Luồng nhanh: GET /semesters (nhẹ) → hiện chip → GET /timetable/me?semesterId=
+/// (API đã lọc theo kỳ, không gọi thêm /classes).
 class TimetableView extends StatefulWidget {
   final int? studentId;
   const TimetableView({super.key, this.studentId});
@@ -21,18 +24,16 @@ class _TimetableViewState extends State<TimetableView> {
 
   List<SemesterItem> _semesters = [];
   int? _semesterId;
-  Set<int> _classIdsInSemester = {};
+
   /// Cache TKB theo kỳ — đổi tuần trong cùng kỳ không gọi lại API.
   final Map<int, List<TimetableSlotModel>> _slotsBySemester = {};
-  final Map<int, Set<int>> _classIdsCache = {};
 
-  /// Thứ Hai của tuần đang xem.
   late DateTime _weekMonday;
-  /// Ngày đang chọn trong tuần (1..7 = Mon..Sun).
   int _selectedDay = 1;
 
   WeeklyTimetableModel? _week;
-  bool _loading = true;
+  bool _bootstrapping = true; // đang tải danh sách kỳ
+  bool _loadingWeek = false; // đang tải TKB của kỳ đã chọn
   String? _error;
 
   static const _dayShort = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -51,7 +52,7 @@ class _TimetableViewState extends State<TimetableView> {
     super.initState();
     final now = DateTime.now();
     _weekMonday = _mondayOf(now);
-    _selectedDay = now.weekday; // 1=Mon … 7=Sun
+    _selectedDay = now.weekday;
     _bootstrap();
   }
 
@@ -60,7 +61,6 @@ class _TimetableViewState extends State<TimetableView> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.studentId != widget.studentId) {
       _slotsBySemester.clear();
-      _classIdsCache.clear();
       _loadWeek(force: true);
     }
   }
@@ -73,55 +73,48 @@ class _TimetableViewState extends State<TimetableView> {
   DateTime _dateOfDay(int dayOfWeek) =>
       _weekMonday.add(Duration(days: dayOfWeek - 1));
 
+  /// Chọn kỳ mặc định: đang diễn ra → demo seed → kỳ sắp tới → kỳ mới nhất.
+  SemesterItem? _pickDefaultSemester(DateTime day) {
+    if (_semesters.isEmpty) return null;
+    final inWeek = _semesters.where((s) => s.contains(day));
+    if (inWeek.isNotEmpty) return inWeek.first;
+    final demo =
+        _semesters.where((s) => s.name.contains('Học kỳ 1 (2026-2027)'));
+    if (demo.isNotEmpty) return demo.first;
+    final upcoming = _semesters.where((s) => !s.startDate.isBefore(day)).toList()
+      ..sort((a, b) => a.startDate.compareTo(b.startDate));
+    if (upcoming.isNotEmpty) return upcoming.first;
+    return _semesters.first;
+  }
+
+  /// Chỉ tải danh sách kỳ → hiện chip ngay; sau đó tải TKB kỳ mặc định.
   Future<void> _bootstrap() async {
     setState(() {
-      _loading = true;
+      _bootstrapping = true;
       _error = null;
     });
     final (list, err) = await _semestersApi.list();
     if (!mounted) return;
     if (err != null) {
       setState(() {
-        _loading = false;
+        _bootstrapping = false;
         _error = err;
       });
       return;
     }
     _semesters = list ?? [];
-    // Ưu tiên kỳ chứa tuần hiện tại → HK1 demo → kỳ mới nhất.
     final weekDay = _dateOfDay(_selectedDay);
-    final inWeek = _semesters.where((s) => s.contains(weekDay));
-    final demo =
-        _semesters.where((s) => s.name.contains('Học kỳ 1 (2026-2027)'));
-    _semesterId = inWeek.isNotEmpty
-        ? inWeek.first.id
-        : (demo.isNotEmpty
-            ? demo.first.id
-            : (_semesters.isNotEmpty ? _semesters.first.id : null));
+    // Ưu tiên: kỳ chứa tuần hiện tại → kỳ demo có seed → kỳ sắp tới → kỳ mới nhất.
+    _semesterId = _pickDefaultSemester(weekDay)?.id;
     if (_semesterId != null) {
       final sem = _semesters.firstWhere((s) => s.id == _semesterId);
-      if (!sem.contains(weekDay) && inWeek.isEmpty) {
+      if (!sem.contains(weekDay)) {
         _weekMonday = _mondayOf(sem.startDate);
         _selectedDay = sem.startDate.weekday;
       }
     }
-    await _applySemester(_semesterId);
-    await _loadWeek(force: true);
-  }
-
-  Future<void> _applySemester(int? id) async {
-    _semesterId = id;
-    if (id == null) {
-      _classIdsInSemester = {};
-      return;
-    }
-    if (_classIdsCache.containsKey(id)) {
-      _classIdsInSemester = _classIdsCache[id]!;
-      return;
-    }
-    final (ids, _) = await _semestersApi.classIdsForSemester(id);
-    _classIdsInSemester = ids ?? {};
-    _classIdsCache[id] = _classIdsInSemester;
+    setState(() => _bootstrapping = false);
+    if (_semesterId != null) await _loadWeek(force: true);
   }
 
   WeeklyTimetableModel _weekFromSlots(List<TimetableSlotModel> slots) {
@@ -132,22 +125,27 @@ class _TimetableViewState extends State<TimetableView> {
     );
   }
 
-  /// Tải TKB theo kỳ. [force]=true bỏ cache. Đổi tuần cùng kỳ → không gọi API.
+  /// Tải TKB theo kỳ. [force]=true bỏ cache.
   Future<void> _loadWeek({bool force = false}) async {
     final semId = _semesterId;
-    if (!force &&
-        semId != null &&
-        _slotsBySemester.containsKey(semId)) {
+    if (semId == null) {
+      setState(() {
+        _week = _weekFromSlots(const []);
+        _loadingWeek = false;
+      });
+      return;
+    }
+    if (!force && _slotsBySemester.containsKey(semId)) {
       setState(() {
         _week = _weekFromSlots(_slotsBySemester[semId]!);
         _error = null;
-        _loading = false;
+        _loadingWeek = false;
       });
       return;
     }
 
     setState(() {
-      _loading = true;
+      _loadingWeek = true;
       _error = null;
     });
     final (week, err) = await _timetable.getMyWeek(
@@ -156,23 +154,20 @@ class _TimetableViewState extends State<TimetableView> {
       semesterId: semId,
     );
     if (!mounted) return;
-    if (week != null && semId != null) {
+    if (week != null) {
       _slotsBySemester[semId] = week.slots;
     }
     setState(() {
-      _week = week == null
-          ? null
-          : _weekFromSlots(week.slots);
+      _week = week == null ? null : _weekFromSlots(week.slots);
       _error = err;
-      _loading = false;
+      _loadingWeek = false;
     });
   }
 
   Future<void> _onSemesterChanged(int id) async {
+    if (id == _semesterId) return;
     final sem = _semesters.where((s) => s.id == id).firstOrNull;
-    setState(() => _loading = true);
-    await _applySemester(id);
-    // Nhảy tuần về đầu kỳ (hoặc hôm nay nếu hôm nay nằm trong kỳ).
+    setState(() => _semesterId = id);
     if (sem != null) {
       final now = DateTime.now();
       final anchor = sem.contains(now) ? now : sem.startDate;
@@ -188,8 +183,6 @@ class _TimetableViewState extends State<TimetableView> {
       _weekMonday = _weekMonday.add(Duration(days: deltaDays));
     });
     await _syncSemesterToWeek(reloadWeek: false);
-    // Cùng kỳ → chỉ đổi nhãn tuần, tái dùng slot đã cache (không query lại).
-    // Đổi kỳ (hoặc nghỉ hè) → query / lấy cache kỳ mới.
     if (_semesterId == prevSem && _semesterId != null) {
       setState(() {
         _week = _weekFromSlots(
@@ -201,42 +194,34 @@ class _TimetableViewState extends State<TimetableView> {
     await _loadWeek();
   }
 
-  /// Chọn học kỳ chứa [ngày] trong tuần đang xem; nếu nghỉ hè → bỏ chọn.
   Future<void> _syncSemesterToWeek({bool reloadWeek = true}) async {
     final day = _dateOfDay(_selectedDay);
     final match = _semesters.where((s) => s.contains(day)).toList();
     if (match.isEmpty) {
       setState(() {
         _semesterId = null;
-        _classIdsInSemester = {};
         _week = _weekFromSlots(const []);
       });
       return;
     }
     final sem = match.first;
     if (sem.id == _semesterId) return;
-    await _applySemester(sem.id);
-    setState(() {});
+    setState(() => _semesterId = sem.id);
     if (reloadWeek) await _loadWeek();
   }
 
   List<TimetableSlotModel> get _slotsForSelectedDay {
     final all = _week?.slots ?? [];
-    return all
-        .where((s) =>
-            s.dayOfWeek == _selectedDay &&
-            (_semesterId == null ||
-                _classIdsInSemester.contains(s.classId)))
-        .toList()
+    return all.where((s) => s.dayOfWeek == _selectedDay).toList()
       ..sort((a, b) => a.period.compareTo(b.period));
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading && _week == null) {
+    if (_bootstrapping) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (_error != null && _week == null) {
+    if (_error != null && _semesters.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -250,8 +235,7 @@ class _TimetableViewState extends State<TimetableView> {
     }
 
     final slots = _slotsForSelectedDay;
-    final monthLabel =
-        'Tháng ${_weekMonday.month}/${_weekMonday.year}';
+    final monthLabel = 'Tháng ${_weekMonday.month}/${_weekMonday.year}';
 
     return RefreshIndicator(
       onRefresh: () => _loadWeek(force: true),
@@ -285,7 +269,29 @@ class _TimetableViewState extends State<TimetableView> {
               ),
             ),
           ),
-          if (slots.isEmpty)
+          if (_loadingWeek)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_error != null && _week == null)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_error!, textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: () => _loadWeek(force: true),
+                      child: const Text('Thử lại'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (slots.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
               child: Center(
@@ -357,7 +363,7 @@ class _TimetableViewState extends State<TimetableView> {
         children: [
           IconButton(
             tooltip: 'Tuần trước',
-            onPressed: () => _shiftWeek(-7),
+            onPressed: _loadingWeek ? null : () => _shiftWeek(-7),
             icon: const Icon(Icons.chevron_left),
           ),
           Expanded(
@@ -369,7 +375,7 @@ class _TimetableViewState extends State<TimetableView> {
           ),
           IconButton(
             tooltip: 'Tuần sau',
-            onPressed: () => _shiftWeek(7),
+            onPressed: _loadingWeek ? null : () => _shiftWeek(7),
             icon: const Icon(Icons.chevron_right),
           ),
         ],
@@ -389,10 +395,8 @@ class _TimetableViewState extends State<TimetableView> {
           final date = _dateOfDay(day);
           final selected = day == _selectedDay;
           final isToday = date == todayDate;
-          final hasSlots = (_week?.slots ?? []).any((s) =>
-              s.dayOfWeek == day &&
-              (_semesterId == null ||
-                  _classIdsInSemester.contains(s.classId)));
+          final hasSlots =
+              (_week?.slots ?? []).any((s) => s.dayOfWeek == day);
 
           return Expanded(
             child: InkWell(

@@ -18,6 +18,9 @@ public interface ITeacherAssignmentRepository
     /// <summary>Các phân công của 1 giáo viên.</summary>
     Task<List<TeacherAssignment>> GetByTeacherAsync(int teacherId);
 
+    /// <summary>GV có được phân công dạy lớp này không.</summary>
+    Task<bool> TeacherAssignedToClassAsync(int teacherId, int classId);
+
     /// <summary>Thêm phân công.</summary>
     Task<TeacherAssignment> CreateAsync(TeacherAssignment entity);
 
@@ -78,11 +81,52 @@ public class TeacherAssignmentRepository : ITeacherAssignmentRepository
     /// <inheritdoc />
     public async Task<List<TeacherAssignment>> GetByTeacherAsync(int teacherId)
     {
-        return await QueryWithIncludes()
+        // Projection — tránh Include/ThenInclude (lần đầu từng ~8s).
+        var rows = await _context.TeacherAssignments
+            .AsNoTracking()
             .Where(ta => ta.TeacherId == teacherId)
             .OrderBy(ta => ta.Class.Name)
+            .ThenBy(ta => ta.Subject.Name)
+            .Select(ta => new
+            {
+                ta.Id,
+                ta.TeacherId,
+                ta.ClassId,
+                ClassName = ta.Class.Name,
+                ta.Class.SemesterId,
+                SemesterName = ta.Class.Semester != null ? ta.Class.Semester.Name : null,
+                ta.SubjectId,
+                SubjectName = ta.Subject.Name,
+                SubjectCode = ta.Subject.Code,
+            })
             .ToListAsync();
+
+        return rows.Select(r => new TeacherAssignment
+        {
+            Id = r.Id,
+            TeacherId = r.TeacherId,
+            ClassId = r.ClassId,
+            SubjectId = r.SubjectId,
+            Class = new Class
+            {
+                Id = r.ClassId,
+                Name = r.ClassName,
+                SemesterId = r.SemesterId,
+                Semester = new Semester { Id = r.SemesterId, Name = r.SemesterName ?? "" },
+            },
+            Subject = new Subject
+            {
+                Id = r.SubjectId,
+                Name = r.SubjectName,
+                Code = r.SubjectCode,
+            },
+        }).ToList();
     }
+
+    /// <summary>Kiểm tra GV có phân công dạy lớp không (nhẹ, không load full list).</summary>
+    public Task<bool> TeacherAssignedToClassAsync(int teacherId, int classId)
+        => _context.TeacherAssignments.AsNoTracking()
+            .AnyAsync(ta => ta.TeacherId == teacherId && ta.ClassId == classId);
 
     /// <inheritdoc />
     public async Task<TeacherAssignment> CreateAsync(TeacherAssignment entity)

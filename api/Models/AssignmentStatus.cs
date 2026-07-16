@@ -6,7 +6,12 @@ namespace Api.Models;
 /// </summary>
 public static class AssignmentStatus
 {
+    /// <summary>Chưa nộp và còn trong hạn.</summary>
     public const string ToDo = "ToDo";
+
+    /// <summary>Đã có bài nộp.</summary>
     public const string Done = "Done";
+
+    /// <summary>Chưa nộp và đã quá DueDate.</summary>
     public const string Overdue = "Overdue";
 }

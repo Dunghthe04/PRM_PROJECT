@@ -64,16 +64,19 @@ public class TimetableController : ControllerBase
     }
 
     /// <summary>
-    /// GET /api/timetable/teacher?weekStart= — lịch dạy của GV đang đăng nhập.
+    /// GET /api/timetable/teacher?weekStart=&amp;semesterId= — lịch dạy của GV đang đăng nhập.
+    /// semesterId: chỉ lấy tiết thuộc lớp trong kỳ (khuyến nghị).
     /// </summary>
     [HttpGet("teacher")]
     [Authorize(Roles = "Teacher")]
-    public async Task<IActionResult> GetTeacher([FromQuery] DateTime? weekStart = null)
+    public async Task<IActionResult> GetTeacher(
+        [FromQuery] DateTime? weekStart = null,
+        [FromQuery] int? semesterId = null)
     {
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized();
 
-        var (result, error) = await _service.GetTeacherAsync(userId.Value, weekStart);
+        var (result, error) = await _service.GetTeacherAsync(userId.Value, weekStart, semesterId);
         if (error != null) return BadRequest(new { message = error });
         return Ok(result);
     }

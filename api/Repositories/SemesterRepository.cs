@@ -36,6 +36,7 @@ public class SemesterRepository : ISemesterRepository
     public async Task<List<Semester>> GetAllAsync()
     {
         return await _context.Semesters
+            .AsNoTracking()
             .OrderByDescending(s => s.StartDate)
             .ToListAsync();
     }

@@ -1,15 +1,33 @@
-// Model lớp+môn mà giáo viên được phân công dạy (FR3.2/FR3.1).
-// Khớp TeacherClassDto bên API (.NET): GET /api/teachers/{id}/classes.
+/// Model phân công giảng dạy & roster lớp (FR3.1).
+///
+/// Quan hệ server:
+/// - [TeacherClassModel] ← `TeacherAssignment` (Teacher + Class + Subject + Semester).
+/// - [ClassStudentModel] ← `ClassStudent` (Class ↔ Student).
 
-/// Một phân công giảng dạy: lớp + môn + kỳ học.
+/// Một phân công: GV dạy môn X cho lớp Y trong kỳ Z.
 class TeacherClassModel {
+  /// Id `TeacherAssignment`.
   final int assignmentId;
+
+  /// FK → lớp.
   final int classId;
+
+  /// Tên lớp.
   final String className;
+
+  /// FK → môn.
   final int subjectId;
+
+  /// Tên môn.
   final String subjectName;
+
+  /// Mã môn.
   final String subjectCode;
-  final int semesterId; // dùng luôn cho nhập điểm (khỏi gọi /semesters)
+
+  /// FK → học kỳ (lấy từ Class.Semester).
+  final int semesterId;
+
+  /// Tên học kỳ (có thể null nếu API không trả).
   final String? semesterName;
 
   TeacherClassModel({
@@ -23,6 +41,7 @@ class TeacherClassModel {
     this.semesterName,
   });
 
+  /// Parse từ JSON `TeacherClassDto` (`GET /teachers/{id}/classes`).
   factory TeacherClassModel.fromJson(Map<String, dynamic> json) {
     return TeacherClassModel(
       assignmentId: json['assignmentId'] as int? ?? 0,
@@ -37,11 +56,15 @@ class TeacherClassModel {
   }
 }
 
-/// Một học sinh trong lớp (roster) — khớp ClassStudentDto.
-/// GET /api/classes/{id}/students.
+/// Một học sinh trong roster lớp — khớp `ClassStudentDto`.
 class ClassStudentModel {
+  /// FK → User (Role = Student).
   final int studentId;
+
+  /// SĐT học sinh.
   final String phone;
+
+  /// Họ tên học sinh.
   final String fullName;
 
   ClassStudentModel({
@@ -50,6 +73,7 @@ class ClassStudentModel {
     required this.fullName,
   });
 
+  /// Parse từ JSON (`GET /classes/{id}/students`).
   factory ClassStudentModel.fromJson(Map<String, dynamic> json) {
     return ClassStudentModel(
       studentId: json['studentId'] as int? ?? 0,

@@ -2,71 +2,98 @@ import 'package:flutter/material.dart';
 import '../common/app_colors.dart';
 import '../model/user_model.dart';
 import '../service/parent_session.dart';
-import 'assignments_view.dart';
 import 'grades_view.dart';
 import 'timetable_view.dart';
 
-/// Tab "Học tập" (FR2.3, FR2.4) cho Học sinh & Phụ huynh.
+/// Tab "Học tập" (FR2.3) cho Học sinh & Phụ huynh.
 ///
-/// Gộp 3 màn con qua TabBar: Thời khóa biểu · Bảng điểm · Bài tập.
-/// - Học sinh: xem dữ liệu của chính mình, được nộp bài.
-/// - Phụ huynh: xem theo con đang chọn (Switch Profile), chỉ theo dõi.
-///
-/// Là 1 tab trong _MainShell (đã có Scaffold + AppBar) nên KHÔNG tự tạo
-/// Scaffold, chỉ trả về nội dung.
-class StudyTab extends StatelessWidget {
+/// Gộp 2 màn con: Thời khóa biểu · Bảng điểm.
+/// Chỉ tạo widget (và gọi API) khi lần đầu mở tab đó — tránh tải cả hai cùng lúc.
+class StudyTab extends StatefulWidget {
   final UserModel user;
   const StudyTab({super.key, required this.user});
 
-  bool get _isParent => user.role == 'Parent';
+  @override
+  State<StudyTab> createState() => _StudyTabState();
+}
+
+class _StudyTabState extends State<StudyTab>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+  /// Các tab đã từng mở.
+  final Set<int> _visited = {0};
+  int _index = 0;
+
+  bool get _isParent => widget.user.role == 'Parent';
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    final i = _tabController.index;
+    if (i == _index && _visited.contains(i)) return;
+    setState(() {
+      _index = i;
+      _visited.add(i);
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    // DefaultTabController đặt NGOÀI phần đổi con → khi PH đổi con, chỉ nội dung
-    // các tab con nạp lại, không reset về tab đầu.
-    return DefaultTabController(
-      length: 3,
-      child: Column(
-        children: [
-          const Material(
-            color: AppColors.white,
-            child: TabBar(
-              labelColor: AppColors.primary,
-              unselectedLabelColor: AppColors.textGrey,
-              indicatorColor: AppColors.primary,
-              tabs: [
-                Tab(text: 'Thời khóa biểu'),
-                Tab(text: 'Bảng điểm'),
-                Tab(text: 'Bài tập'),
-              ],
-            ),
+    return Column(
+      children: [
+        Material(
+          color: AppColors.white,
+          child: TabBar(
+            controller: _tabController,
+            labelColor: AppColors.primary,
+            unselectedLabelColor: AppColors.textGrey,
+            indicatorColor: AppColors.primary,
+            tabs: const [
+              Tab(text: 'Thời khóa biểu'),
+              Tab(text: 'Bảng điểm'),
+            ],
           ),
-          Expanded(
-            child: TabBarView(
-              children: [
-                _childScoped((studentId) => TimetableView(studentId: studentId)),
-                _childScoped((studentId) => GradesView(studentId: studentId)),
-                _childScoped(
-                  (studentId) => AssignmentsView(
-                    studentId: studentId,
-                    // Chỉ Học sinh được nộp bài; Phụ huynh chỉ theo dõi.
-                    canSubmit: !_isParent,
+        ),
+        Expanded(
+          // Offstage + if: chỉ mount tab đã mở; tab ẩn vẫn giữ state.
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (_visited.contains(0))
+                Offstage(
+                  offstage: _index != 0,
+                  child: _childScoped(
+                    (studentId) => TimetableView(studentId: studentId),
                   ),
                 ),
-              ],
-            ),
+              if (_visited.contains(1))
+                Offstage(
+                  offstage: _index != 1,
+                  child: _childScoped(
+                    (studentId) => GradesView(studentId: studentId),
+                  ),
+                ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   /// Bọc 1 màn con để truyền đúng studentId theo vai trò.
-  ///
-  /// Nhận: [builder] — hàm dựng màn con từ studentId (null nếu là HS).
-  /// - HS: gọi builder(null) trực tiếp.
-  /// - PH: nghe ParentSession.selectedChild → dựng lại màn với id con đang chọn;
-  ///   chưa chọn/không có con thì hiện thông báo.
   Widget _childScoped(Widget Function(int? studentId) builder) {
     if (!_isParent) return builder(null);
 
@@ -84,7 +111,6 @@ class StudyTab extends StatelessWidget {
             ),
           );
         }
-        // ValueKey theo id con → Flutter tạo state mới khi đổi con (nạp lại sạch).
         return KeyedSubtree(key: ValueKey(child.id), child: builder(child.id));
       },
     );

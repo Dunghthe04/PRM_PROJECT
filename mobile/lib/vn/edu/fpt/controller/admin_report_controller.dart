@@ -157,9 +157,12 @@ class AdminReportController {
 
   Future<(List<GradeReportRow>?, String?)> getGrades({int? classId}) async {
     try {
-      final q = <String, dynamic>{'format': 'json'};
+      final q = <String, dynamic>{};
       if (classId != null) q['classId'] = classId;
-      final res = await _api.dio.get('/reports/grades', queryParameters: q);
+      final res = await _api.dio.get(
+        '/reports/grades',
+        queryParameters: q.isEmpty ? null : q,
+      );
       if (res.statusCode == 200 && res.data is Map) {
         final rows = (res.data['rows'] as List? ?? [])
             .map((e) => GradeReportRow.fromJson(e as Map<String, dynamic>))
@@ -177,7 +180,6 @@ class AdminReportController {
   }) async {
     try {
       final res = await _api.dio.get('/reports/attendance', queryParameters: {
-        'format': 'json',
         'classId': classId,
       });
       if (res.statusCode == 200 && res.data is Map) {
@@ -197,9 +199,12 @@ class AdminReportController {
 
   Future<(List<FeeReportRow>?, String?)> getFees({int? classId}) async {
     try {
-      final q = <String, dynamic>{'format': 'json'};
+      final q = <String, dynamic>{};
       if (classId != null) q['classId'] = classId;
-      final res = await _api.dio.get('/reports/fees', queryParameters: q);
+      final res = await _api.dio.get(
+        '/reports/fees',
+        queryParameters: q.isEmpty ? null : q,
+      );
       if (res.statusCode == 200 && res.data is Map) {
         final rows = (res.data['rows'] as List? ?? [])
             .map((e) => FeeReportRow.fromJson(e as Map<String, dynamic>))

@@ -6,42 +6,248 @@ import 'package:url_launcher/url_launcher.dart';
 import '../common/app_colors.dart';
 import '../common/format_utils.dart';
 import '../controller/fee_controller.dart';
+import '../controller/semester_controller.dart';
 import '../model/fee_model.dart';
 import '../model/user_model.dart';
 import '../service/parent_session.dart';
 
-/// Màn Học phí (FR2.6) — full-screen, mở từ lối tắt Dashboard.
-///
-/// 2 tab: "Hóa đơn" (xem + thanh toán) và "Lịch sử" (giao dịch).
-/// - Học sinh: xem hóa đơn + biên lai (không thanh toán được — do backend
-///   chỉ cho Phụ huynh/Admin tạo giao dịch).
+/// Màn Học phí (FR2.6) — danh sách hóa đơn + lọc theo kỳ.
+/// - Học sinh: xem hóa đơn + biên lai (không thanh toán).
 /// - Phụ huynh: thanh toán VNPay/PayOS cho con đang chọn.
-class FeeView extends StatelessWidget {
+class FeeView extends StatefulWidget {
   final UserModel user;
   const FeeView({super.key, required this.user});
 
   @override
+  State<FeeView> createState() => _FeeViewState();
+}
+
+class _FeeViewState extends State<FeeView> {
+  final FeeController _controller = FeeController();
+  final SemesterController _semestersApi = SemesterController();
+
+  List<FeeInvoiceModel> _all = [];
+  List<SemesterItem> _semesters = [];
+  /// null = Tất cả kỳ.
+  int? _semesterId;
+  bool _loading = true;
+  String? _error;
+
+  bool get _isParent => widget.user.role == 'Parent';
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    final results = await Future.wait([
+      _controller.getMyInvoices(),
+      _semestersApi.list(),
+    ]);
+    if (!mounted) return;
+
+    final (invoices, invErr) =
+        results[0] as (List<FeeInvoiceModel>?, String?);
+    final (semesters, semErr) = results[1] as (List<SemesterItem>?, String?);
+
+    if (invErr != null) {
+      setState(() {
+        _loading = false;
+        _error = invErr;
+      });
+      return;
+    }
+
+    _all = invoices ?? [];
+    _semesters = semesters ?? [];
+    // Mặc định: kỳ demo / đang diễn ra; không có thì "Tất cả".
+    _semesterId = _pickDefaultSemester()?.id;
+    setState(() => _loading = false);
+    if (semErr != null && mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(semErr)));
+    }
+  }
+
+  SemesterItem? _pickDefaultSemester() {
+    if (_semesters.isEmpty) return null;
+    final now = DateTime.now();
+    final current = _semesters.where((s) => s.contains(now));
+    if (current.isNotEmpty) return current.first;
+    final demo =
+        _semesters.where((s) => s.name.contains('Học kỳ 1 (2026-2027)'));
+    if (demo.isNotEmpty) return demo.first;
+    return null; // Tất cả
+  }
+
+  Future<void> _reload() => _bootstrap();
+
+  /// Lọc theo con (PH) + theo kỳ đã chọn.
+  List<FeeInvoiceModel> _filtered() {
+    var list = List<FeeInvoiceModel>.from(_all);
+    if (_isParent) {
+      final child = ParentSession.instance.selectedChild.value;
+      if (child != null) {
+        list = list.where((e) => e.studentId == child.id).toList();
+      }
+    }
+    if (_semesterId != null) {
+      final sem = _semesters.where((s) => s.id == _semesterId).firstOrNull;
+      if (sem != null) {
+        list = list.where((e) => _matchesSemester(e, sem)).toList();
+      }
+    }
+    list.sort((a, b) {
+      if (a.isPaid != b.isPaid) return a.isPaid ? 1 : -1;
+      return a.dueDate.compareTo(b.dueDate);
+    });
+    return list;
+  }
+
+  /// Khớp kỳ: hạn đóng nằm trong kỳ, hoặc tên/ghi chú chứa tên kỳ / năm học.
+  bool _matchesSemester(FeeInvoiceModel inv, SemesterItem sem) {
+    if (sem.contains(inv.dueDate)) return true;
+    final hay =
+        '${inv.feeCategoryName} ${inv.note ?? ''}'.toLowerCase();
+    final name = sem.name.toLowerCase();
+    if (hay.contains(name)) return true;
+    final year = RegExp(r'\((\d{4}-\d{4})\)').firstMatch(sem.name);
+    final hk = RegExp(r'học kỳ\s*(\d)', caseSensitive: false).firstMatch(sem.name);
+    if (year != null && hay.contains(year.group(1)!.toLowerCase())) {
+      if (hk == null) return true;
+      final n = hk.group(1)!;
+      return hay.contains('học kỳ $n') ||
+          hay.contains('hoc ky $n') ||
+          hay.contains('hk$n');
+    }
+    return false;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Học phí'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Hóa đơn'),
-              Tab(text: 'Lịch sử'),
-            ],
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Học phí'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.white,
+      ),
+      body: _isParent
+          ? ValueListenableBuilder<UserModel?>(
+              valueListenable: ParentSession.instance.selectedChild,
+              builder: (context, _, _) => _body(),
+            )
+          : _body(),
+    );
+  }
+
+  Widget _body() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null) {
+      return _CenteredRetry(message: _error!, onRetry: _reload);
+    }
+
+    final filtered = _filtered();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _semesterChips(),
+        Expanded(
+          child: RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: _reload,
+            child: filtered.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      SizedBox(height: 120),
+                      Center(
+                        child: Text(
+                          'Không có hóa đơn trong kỳ này.',
+                          style: TextStyle(
+                            color: AppColors.textDark,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) => _InvoiceCard(
+                      item: filtered[index],
+                      showStudent: _isParent,
+                      onTap: _openDetail,
+                    ),
+                  ),
           ),
         ),
-        body: TabBarView(
-          children: [
-            _InvoicesTab(user: user),
-            _HistoryTab(user: user),
-          ],
+      ],
+    );
+  }
+
+  Widget _semesterChips() {
+    // Chip "Tất cả" + danh sách kỳ.
+    final items = <({int? id, String label})>[
+      (id: null, label: 'Tất cả'),
+      ..._semesters.map((s) => (id: s.id as int?, label: s.name)),
+    ];
+    if (items.length <= 1) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final item = items[i];
+          final selected = item.id == _semesterId;
+          return ChoiceChip(
+            label: Text(
+              item.label,
+              style: TextStyle(
+                fontSize: 12,
+                color: selected ? AppColors.white : AppColors.textDark,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+            selected: selected,
+            selectedColor: AppColors.primary,
+            backgroundColor: AppColors.white,
+            side: BorderSide(
+              color: selected ? AppColors.primary : Colors.grey.shade300,
+            ),
+            onSelected: (_) => setState(() => _semesterId = item.id),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _openDetail(FeeInvoiceModel item) async {
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _InvoiceDetailPage(
+          item: item,
+          canPay: _isParent,
         ),
       ),
     );
+    if (changed == true) _reload();
   }
 }
 
@@ -52,116 +258,7 @@ Color _invoiceColor(FeeInvoiceModel inv) {
   return AppColors.primary;
 }
 
-// ─── Tab Hóa đơn ─────────────────────────────────────────────────────────────
-
-class _InvoicesTab extends StatefulWidget {
-  final UserModel user;
-  const _InvoicesTab({required this.user});
-
-  @override
-  State<_InvoicesTab> createState() => _InvoicesTabState();
-}
-
-class _InvoicesTabState extends State<_InvoicesTab> {
-  final FeeController _controller = FeeController();
-  late Future<(List<FeeInvoiceModel>?, String?)> _future;
-
-  bool get _isParent => widget.user.role == 'Parent';
-
-  @override
-  void initState() {
-    super.initState();
-    _future = _controller.getMyInvoices();
-  }
-
-  Future<void> _reload() async {
-    setState(() => _future = _controller.getMyInvoices());
-    await _future;
-  }
-
-  /// Lọc theo con đang chọn (PH); giữ nguyên với HS.
-  List<FeeInvoiceModel> _applyFilter(List<FeeInvoiceModel> list) {
-    if (!_isParent) return list;
-    final child = ParentSession.instance.selectedChild.value;
-    if (child == null) return list;
-    return list.where((e) => e.studentId == child.id).toList();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // PH: nghe đổi con để lọc lại.
-    if (_isParent) {
-      return ValueListenableBuilder<UserModel?>(
-        valueListenable: ParentSession.instance.selectedChild,
-        builder: (context, _, _) => _buildList(),
-      );
-    }
-    return _buildList();
-  }
-
-  Widget _buildList() {
-    return FutureBuilder<(List<FeeInvoiceModel>?, String?)>(
-      future: _future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final (list, error) = snapshot.data ?? (null, 'Không tải được dữ liệu.');
-        if (error != null) {
-          return _CenteredRetry(message: error, onRetry: _reload);
-        }
-
-        final filtered = _applyFilter(list ?? []);
-        // Sắp xếp: chưa đóng lên trước, rồi theo hạn gần nhất.
-        filtered.sort((a, b) {
-          if (a.isPaid != b.isPaid) return a.isPaid ? 1 : -1;
-          return a.dueDate.compareTo(b.dueDate);
-        });
-
-        if (filtered.isEmpty) {
-          return RefreshIndicator(
-            onRefresh: _reload,
-            child: ListView(
-              children: const [
-                SizedBox(height: 120),
-                Center(child: Text('Chưa có hóa đơn nào.')),
-              ],
-            ),
-          );
-        }
-
-        return RefreshIndicator(
-          onRefresh: _reload,
-          child: ListView.separated(
-            padding: const EdgeInsets.all(12),
-            itemCount: filtered.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (context, index) => _InvoiceCard(
-              item: filtered[index],
-              showStudent: _isParent,
-              onTap: _openDetail,
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _openDetail(FeeInvoiceModel item) async {
-    final changed = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => _InvoiceDetailPage(
-          item: item,
-          canPay: _isParent, // chỉ PH mới thanh toán
-        ),
-      ),
-    );
-    if (changed == true) _reload();
-  }
-}
-
-/// 1 thẻ hóa đơn trong danh sách.
+/// 1 thẻ hóa đơn — màu chữ rõ trên nền trắng.
 class _InvoiceCard extends StatelessWidget {
   final FeeInvoiceModel item;
   final bool showStudent;
@@ -174,44 +271,92 @@ class _InvoiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accent = _invoiceColor(item);
     return Card(
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: _invoiceColor(item).withValues(alpha: 0.15),
-          child: Icon(Icons.receipt_long, color: _invoiceColor(item)),
-        ),
-        title: Text(
-          item.feeCategoryName,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (showStudent) Text('HS: ${item.studentName}'),
-            Text(FormatUtils.currency(item.amount),
-                style: const TextStyle(
-                    color: AppColors.textDark, fontWeight: FontWeight.w600)),
-            Text('Hạn: ${FormatUtils.date(item.dueDate)}',
-                style: const TextStyle(fontSize: 12, color: AppColors.textGrey)),
-          ],
-        ),
-        isThreeLine: true,
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: _invoiceColor(item).withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            item.statusLabel,
-            style: TextStyle(
-              color: _invoiceColor(item),
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
+      color: AppColors.white,
+      elevation: 0.5,
+      child: InkWell(
         onTap: () => onTap(item),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                backgroundColor: accent.withValues(alpha: 0.15),
+                child: Icon(Icons.receipt_long, color: accent),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.feeCategoryName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: accent.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            item.statusLabel,
+                            style: TextStyle(
+                              color: accent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (showStudent) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'HS: ${item.studentName}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 4),
+                    Text(
+                      'Hạn: ${FormatUtils.date(item.dueDate)}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      FormatUtils.currency(item.amount),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -219,7 +364,6 @@ class _InvoiceCard extends StatelessWidget {
 
 // ─── Chi tiết hóa đơn + thanh toán ───────────────────────────────────────────
 
-/// Trả về `true` qua Navigator.pop khi hóa đơn có thay đổi (đã/giả lập thanh toán).
 class _InvoiceDetailPage extends StatefulWidget {
   final FeeInvoiceModel item;
   final bool canPay;
@@ -238,7 +382,6 @@ class _InvoiceDetailPageState extends State<_InvoiceDetailPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  /// Tạo giao dịch PayOS rồi mở thẳng màn QR (bỏ bước chọn cổng).
   Future<void> _startPayment() async {
     setState(() => _processing = true);
     final (result, error) = await _controller.createPayment(
@@ -253,14 +396,12 @@ class _InvoiceDetailPageState extends State<_InvoiceDetailPage> {
       return;
     }
 
-    // Mở màn QR: hiển thị QR + số tiền + tự poll trạng thái + tự quay về khi đã trả.
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => _PaymentQrPage(result: result!)),
     );
   }
 
-  /// Mở biên lai điện tử (khi đã thanh toán).
   Future<void> _openReceipt() async {
     setState(() => _processing = true);
     final (receipt, error) = await _controller.getReceipt(widget.item.id);
@@ -281,13 +422,17 @@ class _InvoiceDetailPageState extends State<_InvoiceDetailPage> {
   Widget build(BuildContext context) {
     final item = widget.item;
     return Scaffold(
-      appBar: AppBar(title: const Text('Chi tiết hóa đơn')),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Chi tiết hóa đơn'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.white,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Số tiền lớn + trạng thái.
             Text(
               FormatUtils.currency(item.amount),
               style: TextStyle(
@@ -319,8 +464,6 @@ class _InvoiceDetailPageState extends State<_InvoiceDetailPage> {
             if (item.note != null && item.note!.isNotEmpty)
               _row('Ghi chú', item.note!),
             const SizedBox(height: 28),
-
-            // Hành động theo trạng thái + vai trò.
             if (item.isPaid)
               SizedBox(
                 width: double.infinity,
@@ -340,10 +483,9 @@ class _InvoiceDetailPageState extends State<_InvoiceDetailPage> {
                 ),
               )
             else
-              // HS không thanh toán được → gợi ý liên hệ phụ huynh.
               const Text(
                 'Vui lòng liên hệ phụ huynh để thanh toán khoản này.',
-                style: TextStyle(color: AppColors.textGrey),
+                style: TextStyle(color: AppColors.textDark, fontSize: 14),
               ),
           ],
         ),
@@ -360,11 +502,15 @@ class _InvoiceDetailPageState extends State<_InvoiceDetailPage> {
           SizedBox(
             width: 110,
             child: Text(label,
-                style: const TextStyle(color: AppColors.textGrey)),
+                style: const TextStyle(
+                    color: AppColors.textDark, fontSize: 14)),
           ),
           Expanded(
             child: Text(value,
-                style: const TextStyle(fontWeight: FontWeight.w500)),
+                style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textDark,
+                    fontSize: 14)),
           ),
         ],
       ),
@@ -372,10 +518,8 @@ class _InvoiceDetailPageState extends State<_InvoiceDetailPage> {
   }
 }
 
-// ─── Màn QR thanh toán (poll tự động + tự quay về) ──────────────────────────
+// ─── Màn QR thanh toán ───────────────────────────────────────────────────────
 
-/// Hiển thị QR PayOS + tự động kiểm tra trạng thái mỗi vài giây.
-/// Khi phát hiện đã thanh toán → báo thành công → tự quay về màn hình chính.
 class _PaymentQrPage extends StatefulWidget {
   final PaymentResultModel result;
   const _PaymentQrPage({required this.result});
@@ -393,7 +537,6 @@ class _PaymentQrPageState extends State<_PaymentQrPage> {
   @override
   void initState() {
     super.initState();
-    // Poll trạng thái mỗi 3 giây (webhook/dev-simulate cập nhật DB → app nhận ra).
     _poller = Timer.periodic(const Duration(seconds: 3), (_) => _checkStatus());
   }
 
@@ -405,22 +548,20 @@ class _PaymentQrPageState extends State<_PaymentQrPage> {
 
   Future<void> _checkStatus() async {
     if (_paid || !mounted) return;
-    final (isPaid, _) = await _controller.getPaymentStatus(widget.result.orderCode);
+    final (isPaid, _) =
+        await _controller.getPaymentStatus(widget.result.orderCode);
     if (isPaid == true) _onPaid();
   }
 
-  /// Xử lý khi đã thanh toán: dừng poll, hiện thành công, tự quay về màn chính.
   void _onPaid() {
     if (_paid) return;
     _poller?.cancel();
     setState(() => _paid = true);
-    // Chờ 1.5s cho user thấy thông báo rồi bật hết về màn hình chính.
     Future.delayed(const Duration(milliseconds: 1500), () {
       if (mounted) Navigator.popUntil(context, (route) => route.isFirst);
     });
   }
 
-  /// Mở link cổng thanh toán bằng trình duyệt (khi user muốn thanh toán qua web).
   Future<void> _openGateway() async {
     final uri = Uri.parse(widget.result.paymentUrl);
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -430,7 +571,6 @@ class _PaymentQrPageState extends State<_PaymentQrPage> {
     }
   }
 
-  /// (DEV) Giả lập đã đóng — tiện test khi chưa có PayOS thật.
   Future<void> _simulate() async {
     setState(() => _busy = true);
     final (ok, msg) = await _controller.simulatePaid(widget.result.orderCode);
@@ -446,14 +586,18 @@ class _PaymentQrPageState extends State<_PaymentQrPage> {
   @override
   Widget build(BuildContext context) {
     final r = widget.result;
-    // Có QR thật (PayOS) thì vẽ QR đó; nếu dev stub thì vẽ tạm QR của link.
     final qrData = (r.qrCode != null && r.qrCode!.isNotEmpty)
         ? r.qrCode!
         : r.paymentUrl;
     final isRealQr = r.qrCode != null && r.qrCode!.isNotEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: Text('Thanh toán ${r.provider}')),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text('Thanh toán ${r.provider}'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.white,
+      ),
       body: _paid ? _buildSuccess() : _buildQr(qrData, isRealQr),
     );
   }
@@ -472,7 +616,7 @@ class _PaymentQrPageState extends State<_PaymentQrPage> {
                   color: AppColors.success)),
           SizedBox(height: 8),
           Text('Đang quay về trang chính...',
-              style: TextStyle(color: AppColors.textGrey)),
+              style: TextStyle(color: AppColors.textDark)),
         ],
       ),
     );
@@ -492,16 +636,15 @@ class _PaymentQrPageState extends State<_PaymentQrPage> {
           ),
           const SizedBox(height: 4),
           Text('Mã đơn: ${widget.result.orderCode}',
-              style: const TextStyle(fontSize: 12, color: AppColors.textGrey)),
+              style: const TextStyle(fontSize: 13, color: AppColors.textDark)),
           const SizedBox(height: 20),
-
-          // Khung QR.
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              border:
+                  Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
             ),
             child: QrImageView(
               data: qrData,
@@ -515,11 +658,9 @@ class _PaymentQrPageState extends State<_PaymentQrPage> {
                 ? 'Mở app ngân hàng, quét mã QR để thanh toán.'
                 : '(Dev) Chưa cấu hình PayOS thật — dùng nút "Giả lập đã đóng" để test.',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.textGrey),
+            style: const TextStyle(color: AppColors.textDark, fontSize: 14),
           ),
           const SizedBox(height: 20),
-
-          // Đang chờ thanh toán → hiện loader nhỏ.
           const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -529,12 +670,11 @@ class _PaymentQrPageState extends State<_PaymentQrPage> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
               SizedBox(width: 8),
-              Text('Đang chờ thanh toán...'),
+              Text('Đang chờ thanh toán...',
+                  style: TextStyle(color: AppColors.textDark)),
             ],
           ),
           const SizedBox(height: 24),
-
-          // Mở cổng qua trình duyệt (tuỳ chọn).
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -544,7 +684,6 @@ class _PaymentQrPageState extends State<_PaymentQrPage> {
             ),
           ),
           const SizedBox(height: 8),
-          // (DEV) Giả lập đã đóng.
           SizedBox(
             width: double.infinity,
             child: TextButton(
@@ -567,9 +706,15 @@ class _ReceiptPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Biên lai điện tử')),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Biên lai điện tử'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.white,
+      ),
       body: Center(
         child: Card(
+          color: AppColors.white,
           margin: const EdgeInsets.all(20),
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -613,140 +758,18 @@ class _ReceiptPage extends StatelessWidget {
           SizedBox(
             width: 120,
             child: Text(label,
-                style: const TextStyle(color: AppColors.textGrey)),
+                style: const TextStyle(color: AppColors.textDark)),
           ),
           Expanded(
             child: Text(value,
-                style: const TextStyle(fontWeight: FontWeight.w600)),
+                style: const TextStyle(
+                    fontWeight: FontWeight.w600, color: AppColors.textDark)),
           ),
         ],
       ),
     );
   }
 }
-
-// ─── Tab Lịch sử ─────────────────────────────────────────────────────────────
-
-class _HistoryTab extends StatefulWidget {
-  final UserModel user;
-  const _HistoryTab({required this.user});
-
-  @override
-  State<_HistoryTab> createState() => _HistoryTabState();
-}
-
-class _HistoryTabState extends State<_HistoryTab> {
-  final FeeController _controller = FeeController();
-  late Future<(List<PaymentTransactionModel>?, String?)> _future;
-
-  bool get _isParent => widget.user.role == 'Parent';
-
-  @override
-  void initState() {
-    super.initState();
-    _future = _load();
-  }
-
-  Future<(List<PaymentTransactionModel>?, String?)> _load() {
-    // PH: lọc theo con đang chọn (nếu có).
-    final childId =
-        _isParent ? ParentSession.instance.selectedChild.value?.id : null;
-    return _controller.getHistory(studentId: childId);
-  }
-
-  Future<void> _reload() async {
-    setState(() => _future = _load());
-    await _future;
-  }
-
-  /// Màu theo trạng thái giao dịch.
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'Paid':
-        return AppColors.success;
-      case 'Failed':
-        return AppColors.danger;
-      default:
-        return AppColors.textGrey;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isParent) {
-      return ValueListenableBuilder<UserModel?>(
-        valueListenable: ParentSession.instance.selectedChild,
-        builder: (context, _, _) {
-          // Đổi con → tải lại lịch sử.
-          _future = _load();
-          return _buildList();
-        },
-      );
-    }
-    return _buildList();
-  }
-
-  Widget _buildList() {
-    return FutureBuilder<(List<PaymentTransactionModel>?, String?)>(
-      future: _future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final (list, error) = snapshot.data ?? (null, 'Không tải được dữ liệu.');
-        if (error != null) {
-          return _CenteredRetry(message: error, onRetry: _reload);
-        }
-        if (list == null || list.isEmpty) {
-          return RefreshIndicator(
-            onRefresh: _reload,
-            child: ListView(
-              children: const [
-                SizedBox(height: 120),
-                Center(child: Text('Chưa có giao dịch nào.')),
-              ],
-            ),
-          );
-        }
-        return RefreshIndicator(
-          onRefresh: _reload,
-          child: ListView.separated(
-            padding: const EdgeInsets.all(12),
-            itemCount: list.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final t = list[index];
-              return Card(
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor:
-                        _statusColor(t.status).withValues(alpha: 0.15),
-                    child: Icon(Icons.payments, color: _statusColor(t.status)),
-                  ),
-                  title: Text('${t.provider} • ${FormatUtils.currency(t.amount)}'),
-                  subtitle: Text(
-                    'Mã: ${t.orderCode}\n${FormatUtils.dateTime(t.createdAt)}',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  isThreeLine: true,
-                  trailing: Text(
-                    t.status,
-                    style: TextStyle(
-                      color: _statusColor(t.status),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-}
-
-// ─── Dùng chung ──────────────────────────────────────────────────────────────
 
 class _CenteredRetry extends StatelessWidget {
   final String message;
@@ -763,7 +786,11 @@ class _CenteredRetry extends StatelessWidget {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(message, textAlign: TextAlign.center),
+            child: Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textDark),
+            ),
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(

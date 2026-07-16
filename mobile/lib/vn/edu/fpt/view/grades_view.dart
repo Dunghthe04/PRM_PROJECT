@@ -5,7 +5,7 @@ import '../controller/grade_controller.dart';
 import '../controller/semester_controller.dart';
 import '../model/grade_model.dart';
 
-/// Bảng điểm (FR2.3): ngoài hiện TB môn → chạm xem chi tiết đầu điểm THPT.
+/// Bảng điểm (FR2.3): chọn kỳ → mới tải điểm kỳ đó (có cache).
 class GradesView extends StatefulWidget {
   final int? studentId;
   const GradesView({super.key, this.studentId});
@@ -21,7 +21,11 @@ class _GradesViewState extends State<GradesView> {
   List<SemesterItem> _semesters = [];
   int? _semesterId;
   List<GradeModel> _grades = [];
-  bool _loading = true;
+  /// Cache điểm theo kỳ — đổi kỳ đã xem không gọi lại API.
+  final Map<int, List<GradeModel>> _cacheBySemester = {};
+
+  bool _bootstrapping = true; // đang tải danh sách kỳ
+  bool _loadingGrades = false; // đang tải điểm kỳ đã chọn
   String? _error;
 
   @override
@@ -33,63 +37,95 @@ class _GradesViewState extends State<GradesView> {
   @override
   void didUpdateWidget(covariant GradesView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.studentId != widget.studentId) _loadGrades();
+    if (oldWidget.studentId != widget.studentId) {
+      _cacheBySemester.clear();
+      _loadGrades(force: true);
+    }
   }
 
+  /// Chỉ tải danh sách kỳ → hiện chip ngay; sau đó tải điểm kỳ mặc định.
   Future<void> _bootstrap() async {
     setState(() {
-      _loading = true;
+      _bootstrapping = true;
       _error = null;
     });
     final (list, err) = await _semestersApi.list();
     if (!mounted) return;
     if (err != null) {
       setState(() {
-        _loading = false;
+        _bootstrapping = false;
         _error = err;
       });
       return;
     }
     _semesters = list ?? [];
-    // Ưu tiên kỳ đang diễn ra → HK1 2026-2027 (kỳ seed điểm demo) → kỳ mới nhất.
-    final current = _semesters.where((s) => s.contains(DateTime.now()));
-    final demo = _semesters.where((s) => s.name.contains('Học kỳ 1 (2026-2027)'));
-    _semesterId = current.isNotEmpty
-        ? current.first.id
-        : (demo.isNotEmpty
-            ? demo.first.id
-            : (_semesters.isNotEmpty ? _semesters.first.id : null));
-    await _loadGrades();
+    // Ưu tiên kỳ đang diễn ra → HK1 2026-2027 (kỳ seed) → kỳ sắp tới → kỳ mới nhất.
+    _semesterId = _pickDefaultSemester(DateTime.now())?.id;
+    setState(() => _bootstrapping = false);
+    if (_semesterId != null) await _loadGrades(force: true);
   }
 
-  Future<void> _loadGrades() async {
+  /// Chọn kỳ mặc định có dữ liệu demo, tránh nhảy sang kỳ xa (vd 2028) lúc nghỉ hè.
+  SemesterItem? _pickDefaultSemester(DateTime day) {
+    if (_semesters.isEmpty) return null;
+    final current = _semesters.where((s) => s.contains(day));
+    if (current.isNotEmpty) return current.first;
+    final demo =
+        _semesters.where((s) => s.name.contains('Học kỳ 1 (2026-2027)'));
+    if (demo.isNotEmpty) return demo.first;
+    final upcoming = _semesters.where((s) => !s.startDate.isBefore(day)).toList()
+      ..sort((a, b) => a.startDate.compareTo(b.startDate));
+    if (upcoming.isNotEmpty) return upcoming.first;
+    return _semesters.first;
+  }
+
+  Future<void> _loadGrades({bool force = false}) async {
+    final semId = _semesterId;
+    if (semId == null) {
+      setState(() {
+        _grades = [];
+        _loadingGrades = false;
+      });
+      return;
+    }
+    if (!force && _cacheBySemester.containsKey(semId)) {
+      setState(() {
+        _grades = _cacheBySemester[semId]!;
+        _error = null;
+        _loadingGrades = false;
+      });
+      return;
+    }
+
     setState(() {
-      _loading = true;
+      _loadingGrades = true;
       _error = null;
     });
     final (list, err) = await _gradesApi.getMyGrades(
-      semesterId: _semesterId,
+      semesterId: semId,
       studentId: widget.studentId,
     );
     if (!mounted) return;
+    if (list != null) _cacheBySemester[semId] = list;
     setState(() {
       _grades = list ?? [];
       _error = err;
-      _loading = false;
+      _loadingGrades = false;
     });
   }
 
   Future<void> _onSemesterChanged(int id) async {
-    _semesterId = id;
-    await _loadGrades();
+    if (id == _semesterId) return;
+    setState(() => _semesterId = id);
+    await _loadGrades(); // dùng cache nếu đã tải kỳ này
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
+    if (_bootstrapping) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (_error != null) {
+    if (_error != null && _semesters.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -112,37 +148,59 @@ class _GradesViewState extends State<GradesView> {
 
     final bySubject = groupBySubject(_grades);
     final subjectIds = bySubject.keys.toList()
-      ..sort((a, b) =>
-          bySubject[a]!.first.subjectName.compareTo(bySubject[b]!.first.subjectName));
+      ..sort((a, b) => bySubject[a]!
+          .first
+          .subjectName
+          .compareTo(bySubject[b]!.first.subjectName));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (_semesters.isNotEmpty) _buildSemesterChips(),
         Expanded(
-          child: RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: _loadGrades,
-            child: subjectIds.isEmpty
-                ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: const [
-                      SizedBox(height: 120),
-                      Center(child: Text('Chưa có điểm công bố trong kỳ này.')),
-                    ],
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
-                    itemCount: subjectIds.length,
-                    itemBuilder: (context, i) {
-                      final grades = bySubject[subjectIds[i]]!;
-                      return _SubjectAvgCard(
-                        grades: grades,
-                        onTap: () => _openDetail(grades),
-                      );
-                    },
-                  ),
-          ),
+          child: _loadingGrades
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(_error!, textAlign: TextAlign.center),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: () => _loadGrades(force: true),
+                            child: const Text('Thử lại'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : RefreshIndicator(
+                      color: AppColors.primary,
+                      onRefresh: () => _loadGrades(force: true),
+                      child: subjectIds.isEmpty
+                          ? ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              children: const [
+                                SizedBox(height: 120),
+                                Center(
+                                  child: Text(
+                                      'Chưa có điểm công bố trong kỳ này.'),
+                                ),
+                              ],
+                            )
+                          : ListView.builder(
+                              padding:
+                                  const EdgeInsets.fromLTRB(12, 4, 12, 16),
+                              itemCount: subjectIds.length,
+                              itemBuilder: (context, i) {
+                                final grades = bySubject[subjectIds[i]]!;
+                                return _SubjectAvgCard(
+                                  grades: grades,
+                                  onTap: () => _openDetail(grades),
+                                );
+                              },
+                            ),
+                    ),
         ),
       ],
     );
@@ -174,7 +232,9 @@ class _GradesViewState extends State<GradesView> {
             side: BorderSide(
               color: selected ? AppColors.primary : Colors.grey.shade300,
             ),
-            onSelected: (_) => _onSemesterChanged(s.id),
+            onSelected: (_) {
+              if (!selected) _onSemesterChanged(s.id);
+            },
           );
         },
       ),

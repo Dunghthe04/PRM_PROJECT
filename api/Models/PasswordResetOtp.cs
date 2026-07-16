@@ -1,29 +1,39 @@
 namespace Api.Models;
 
 /// <summary>
-/// Lưu mã OTP gửi về SĐT (xác thực đăng ký hoặc quên mật khẩu).
+/// Lưu mã OTP gửi về SĐT (xác thực đăng ký hoặc quên mật khẩu — FR1.1, FR1.2).
 /// Mỗi mã one-time, TTL ngắn; hết hạn / đã dùng thì không tái sử dụng.
+/// <para>
+/// Quan hệ: N PasswordResetOtp — 1 <see cref="User"/> (cascade khi xóa User).
+/// </para>
 /// </summary>
 public class PasswordResetOtp
 {
+    /// <summary>Khóa chính.</summary>
     public int Id { get; set; }
 
+    /// <summary>FK → <see cref="User"/> — chủ tài khoản nhận OTP.</summary>
     public int UserId { get; set; }
+
+    /// <summary>Navigation: người dùng đích.</summary>
     public User User { get; set; } = null!;
 
     /// <summary>Mã OTP 6 số (TTL ngắn; production có thể hash thêm).</summary>
     public string Code { get; set; } = string.Empty;
 
-    /// <summary>Luôn là Phone theo quyết định sản phẩm.</summary>
+    /// <summary>Kênh gửi — luôn Phone theo quyết định sản phẩm (<see cref="OtpChannel"/>).</summary>
     public string Channel { get; set; } = OtpChannel.Phone;
 
-    /// <summary>SĐT nhận OTP.</summary>
+    /// <summary>SĐT nhận OTP (thường = User.Phone).</summary>
     public string Destination { get; set; } = string.Empty;
 
     /// <summary>Register | ResetPassword — xem <see cref="OtpPurpose"/>.</summary>
     public string Purpose { get; set; } = OtpPurpose.ResetPassword;
 
+    /// <summary>Thời điểm tạo OTP (UTC).</summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>Thời điểm hết hạn (UTC).</summary>
     public DateTime ExpiresAt { get; set; }
 
     /// <summary>True sau khi verify-otp (quên MK) thành công.</summary>

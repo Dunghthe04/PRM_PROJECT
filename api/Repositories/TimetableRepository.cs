@@ -15,6 +15,9 @@ public interface ITimetableRepository
     /// <summary>Lấy tiết theo giáo viên.</summary>
     Task<List<TimetableSlot>> GetByTeacherAsync(int teacherId);
 
+    /// <summary>Lấy tiết theo giáo viên trong 1 kỳ học.</summary>
+    Task<List<TimetableSlot>> GetByTeacherAsync(int teacherId, int semesterId);
+
     /// <summary>Chi tiết 1 tiết.</summary>
     Task<TimetableSlot?> GetByIdAsync(int id);
 
@@ -42,36 +45,14 @@ public class TimetableRepository : ITimetableRepository
     }
 
     /// <summary>
-    /// AsNoTracking + join tường minh — tránh Include/tracking làm chậm khi nhiều tiết
-    /// (HS ghi danh nhiều kỳ → hàng trăm slot).
+    /// Projection cột cần thiết — không Include cả entity (tránh chậm lần đầu).
     /// </summary>
-    private IQueryable<TimetableSlot> QueryWithIncludes() =>
-        _context.TimetableSlots
-            .AsNoTracking()
-            .Include(t => t.Class)
-            .Include(t => t.Subject)
-            .Include(t => t.Teacher);
-
-    /// <inheritdoc />
-    public async Task<List<TimetableSlot>> GetByClassAsync(int classId)
+    private async Task<List<TimetableSlot>> QuerySlotsAsync(
+        System.Linq.Expressions.Expression<Func<TimetableSlot, bool>> predicate)
     {
-        return await QueryWithIncludes()
-            .Where(t => t.ClassId == classId)
-            .OrderBy(t => t.DayOfWeek)
-            .ThenBy(t => t.Period)
-            .ToListAsync();
-    }
-
-    /// <inheritdoc />
-    public async Task<List<TimetableSlot>> GetByClassIdsAsync(IEnumerable<int> classIds)
-    {
-        var ids = classIds.Distinct().ToList();
-        if (ids.Count == 0) return new List<TimetableSlot>();
-
-        // Projection anonymous → gắn navigation nhẹ trong memory (tránh Include/tracking).
         var rows = await _context.TimetableSlots
             .AsNoTracking()
-            .Where(t => ids.Contains(t.ClassId))
+            .Where(predicate)
             .OrderBy(t => t.DayOfWeek)
             .ThenBy(t => t.Period)
             .Select(t => new
@@ -107,19 +88,37 @@ public class TimetableRepository : ITimetableRepository
     }
 
     /// <inheritdoc />
-    public async Task<List<TimetableSlot>> GetByTeacherAsync(int teacherId)
+    public Task<List<TimetableSlot>> GetByClassAsync(int classId)
+        => QuerySlotsAsync(t => t.ClassId == classId);
+
+    /// <inheritdoc />
+    public async Task<List<TimetableSlot>> GetByClassIdsAsync(IEnumerable<int> classIds)
     {
-        return await QueryWithIncludes()
-            .Where(t => t.TeacherId == teacherId)
-            .OrderBy(t => t.DayOfWeek)
-            .ThenBy(t => t.Period)
-            .ToListAsync();
+        var ids = classIds.Distinct().ToList();
+        if (ids.Count == 0) return new List<TimetableSlot>();
+        // 1 id → so sánh trực tiếp (tránh OPENJSON/Contains chậm lần đầu).
+        if (ids.Count == 1)
+        {
+            var only = ids[0];
+            return await QuerySlotsAsync(t => t.ClassId == only);
+        }
+
+        return await QuerySlotsAsync(t => ids.Contains(t.ClassId));
     }
+
+    /// <inheritdoc />
+    public Task<List<TimetableSlot>> GetByTeacherAsync(int teacherId)
+        => QuerySlotsAsync(t => t.TeacherId == teacherId);
+
+    /// <inheritdoc />
+    public Task<List<TimetableSlot>> GetByTeacherAsync(int teacherId, int semesterId)
+        => QuerySlotsAsync(t => t.TeacherId == teacherId && t.Class.SemesterId == semesterId);
 
     /// <inheritdoc />
     public async Task<TimetableSlot?> GetByIdAsync(int id)
     {
-        return await QueryWithIncludes().FirstOrDefaultAsync(t => t.Id == id);
+        var list = await QuerySlotsAsync(t => t.Id == id);
+        return list.FirstOrDefault();
     }
 
     /// <inheritdoc />

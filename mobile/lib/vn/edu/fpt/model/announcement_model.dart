@@ -1,14 +1,35 @@
-/// Model 1 bảng tin — khớp AnnouncementDto bên API .NET.
+/// Một bảng tin (FR1.4 / FR3.4 / FR5.4) — khớp `AnnouncementDto` bên API.
+///
+/// Quan hệ server: `Announcement` → CreatedBy (User), TargetClass?, Subject?.
 class AnnouncementModel {
+  /// Id bảng tin.
   final int id;
+
+  /// Tiêu đề.
   final String title;
+
+  /// Nội dung.
   final String content;
-  final String type; // Global | Class
+
+  /// `Global` (toàn trường) | `Class` (theo lớp).
+  final String type;
+
+  /// FK → lớp nhận tin — bắt buộc khi type = Class.
   final int? targetClassId;
+
+  /// Tên lớp đích.
   final String? targetClassName;
+
+  /// FK → môn liên quan (GV gửi TB lớp) — tuỳ chọn.
   final int? subjectId;
+
+  /// Tên môn liên quan.
   final String? subjectName;
+
+  /// Tên người đăng.
   final String createdByName;
+
+  /// Thời điểm đăng.
   final DateTime createdAt;
 
   AnnouncementModel({
@@ -24,8 +45,10 @@ class AnnouncementModel {
     required this.createdAt,
   });
 
+  /// True nếu bảng tin toàn trường.
   bool get isGlobal => type == 'Global';
 
+  /// Parse từ JSON `AnnouncementDto`.
   factory AnnouncementModel.fromJson(Map<String, dynamic> json) {
     return AnnouncementModel(
       id: json['id'] as int,

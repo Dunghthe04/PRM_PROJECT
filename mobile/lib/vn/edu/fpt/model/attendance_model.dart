@@ -1,18 +1,26 @@
-// Model điểm danh (FR3.1) — khớp AttendanceDto bên API (.NET).
-// Trạng thái P/A/L: request body gửi SỐ (0/1/2); response trả CHUỖI.
+/// Model điểm danh (FR3.1) — khớp `AttendanceDto` bên API .NET.
+///
+/// Quan hệ server: `Attendance` → Class, Student, RecordedByTeacher.
+/// Request body gửi trạng thái dạng số (0/1/2); response trả chuỗi enum.
 
-/// 3 trạng thái điểm danh. Giá trị số khớp enum AttendanceStatus bên backend.
+/// Ba trạng thái điểm danh — index khớp enum backend.
 enum AttendanceStatus {
-  present, // 0 - P (Có mặt)
-  absent, // 1 - A (Vắng)
-  late, // 2 - L (Muộn)
+  /// 0 — Có mặt (P).
+  present,
+
+  /// 1 — Vắng (A).
+  absent,
+
+  /// 2 — Muộn (L).
+  late,
 }
 
+/// Tiện ích chuyển đổi / hiển thị [AttendanceStatus].
 extension AttendanceStatusX on AttendanceStatus {
   /// Số gửi lên API (khớp enum backend).
   int get apiValue => index;
 
-  /// Ký hiệu ngắn hiển thị nút P/A/L.
+  /// Ký hiệu ngắn trên nút P/A/L.
   String get symbol {
     switch (this) {
       case AttendanceStatus.present:
@@ -36,7 +44,7 @@ extension AttendanceStatusX on AttendanceStatus {
     }
   }
 
-  /// Chuyển chuỗi từ API ("Present"/"Absent"/"Late") sang enum.
+  /// Chuyển chuỗi API (`Present` / `Absent` / `Late`) sang enum.
   static AttendanceStatus fromApi(String? s) {
     switch (s) {
       case 'Absent':
@@ -52,11 +60,22 @@ extension AttendanceStatusX on AttendanceStatus {
 
 /// Một bản ghi điểm danh đã lưu trên server.
 class AttendanceModel {
+  /// Id bản ghi.
   final int id;
+
+  /// FK → lớp được điểm danh.
   final int classId;
+
+  /// FK → học sinh.
   final int studentId;
+
+  /// Tên học sinh (denormalized).
   final String studentName;
+
+  /// Ngày điểm danh.
   final DateTime date;
+
+  /// Trạng thái P/A/L.
   final AttendanceStatus status;
 
   AttendanceModel({
@@ -68,6 +87,7 @@ class AttendanceModel {
     required this.status,
   });
 
+  /// Parse từ JSON `AttendanceDto`.
   factory AttendanceModel.fromJson(Map<String, dynamic> json) {
     return AttendanceModel(
       id: json['id'] as int? ?? 0,

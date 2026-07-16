@@ -1,24 +1,49 @@
-// Model học phí (FR2.6) — khớp FeeDtos.cs bên API .NET.
-//
-// Gồm 3 lớp:
-//   - FeeInvoiceModel: 1 hóa đơn khoản thu.
-//   - FeeReceiptModel: biên lai điện tử (khi đã thanh toán).
-//   - PaymentResultModel: kết quả tạo giao dịch (chứa link thanh toán).
+/// Model học phí (FR2.6) — khớp `FeeDtos` bên API .NET.
+///
+/// Quan hệ server:
+/// - [FeeInvoiceModel] ← `FeeInvoice` → Student, FeeCategory.
+/// - [FeeReceiptModel] ← biên lai sinh khi Paid.
+/// - [PaymentResultModel] ← kết quả tạo giao dịch cổng (chưa phải entity DB).
 
 /// Một hóa đơn khoản thu của học sinh.
 class FeeInvoiceModel {
+  /// Id hóa đơn.
   final int id;
+
+  /// FK → học sinh được thu.
   final int studentId;
+
+  /// Tên HS (PH phân biệt con).
   final String studentName;
+
+  /// FK → loại khoản thu.
   final int feeCategoryId;
-  final String feeCategoryName; // tên khoản thu (Học phí, BHYT…)
-  final double amount; // số tiền
-  final DateTime dueDate; // hạn đóng
-  final String status; // Pending | Paid | Overdue…
+
+  /// Tên khoản thu (Học phí, BHYT…).
+  final String feeCategoryName;
+
+  /// Số tiền phải thu.
+  final double amount;
+
+  /// Hạn thanh toán.
+  final DateTime dueDate;
+
+  /// Trạng thái server: Pending | Paid | Failed | Cancelled.
+  final String status;
+
+  /// True khi đã thanh toán thành công.
   final bool isPaid;
+
+  /// Thời điểm thanh toán — null nếu chưa đóng.
   final DateTime? paidAt;
-  final String? paymentMethod; // VNPAY | PAYOS
-  final String? receiptNumber; // số biên lai (khi đã đóng)
+
+  /// Cổng: VNPAY | PAYOS | Manual.
+  final String? paymentMethod;
+
+  /// Số biên lai điện tử — có khi Paid.
+  final String? receiptNumber;
+
+  /// Ghi chú (tuỳ chọn).
   final String? note;
 
   FeeInvoiceModel({
@@ -37,16 +62,17 @@ class FeeInvoiceModel {
     this.note,
   });
 
-  /// Nhãn trạng thái tiếng Việt.
+  /// Nhãn trạng thái tiếng Việt cho UI.
   String get statusLabel {
     if (isPaid) return 'Đã đóng';
     if (DateTime.now().isAfter(dueDate)) return 'Quá hạn';
     return 'Chưa đóng';
   }
 
-  /// True nếu chưa đóng và đã quá hạn.
+  /// Chưa đóng và đã quá hạn thanh toán.
   bool get isOverdue => !isPaid && DateTime.now().isAfter(dueDate);
 
+  /// Parse từ JSON `FeeInvoiceDto`.
   factory FeeInvoiceModel.fromJson(Map<String, dynamic> json) {
     return FeeInvoiceModel(
       id: json['id'] as int,
@@ -69,13 +95,28 @@ class FeeInvoiceModel {
 
 /// Biên lai điện tử của 1 hóa đơn đã thanh toán.
 class FeeReceiptModel {
+  /// Số biên lai.
   final String receiptNumber;
+
+  /// FK → hóa đơn gốc.
   final int invoiceId;
+
+  /// Tên học sinh.
   final String studentName;
+
+  /// Tên khoản thu.
   final String feeCategoryName;
+
+  /// Số tiền đã thu.
   final double amount;
+
+  /// Phương thức thanh toán.
   final String paymentMethod;
+
+  /// Mã giao dịch cổng (nếu có).
   final String? transactionId;
+
+  /// Thời điểm thanh toán.
   final DateTime paidAt;
 
   FeeReceiptModel({
@@ -89,6 +130,7 @@ class FeeReceiptModel {
     required this.paidAt,
   });
 
+  /// Parse từ JSON biên lai (`GET /fee-invoices/{id}/receipt`).
   factory FeeReceiptModel.fromJson(Map<String, dynamic> json) {
     return FeeReceiptModel(
       receiptNumber: json['receiptNumber'] as String? ?? '',
@@ -104,13 +146,22 @@ class FeeReceiptModel {
   }
 }
 
-/// Kết quả tạo giao dịch thanh toán (chứa link checkout + mã đơn + QR).
+/// Kết quả tạo giao dịch thanh toán (chứa link checkout).
 class PaymentResultModel {
-  final String provider; // VNPAY | PAYOS
-  final String orderCode; // mã đơn (dùng cho simulate-paid ở dev + poll trạng thái)
-  final String paymentUrl; // link mở cổng thanh toán
+  /// Nhà cung cấp: VNPAY | PAYOS.
+  final String provider;
+
+  /// Mã đơn nội bộ — dùng poll trạng thái / simulate-paid (dev).
+  final String orderCode;
+
+  /// URL mở cổng thanh toán.
+  final String paymentUrl;
+
+  /// Số tiền giao dịch.
   final double amount;
-  final String? qrCode; // chuỗi VietQR (PayOS) để vẽ QR trong app; null nếu dev stub
+
+  /// Chuỗi VietQR (PayOS) — null nếu stub/dev.
+  final String? qrCode;
 
   PaymentResultModel({
     required this.provider,
@@ -120,6 +171,7 @@ class PaymentResultModel {
     this.qrCode,
   });
 
+  /// Parse từ JSON kết quả `POST /payments/{provider}/create`.
   factory PaymentResultModel.fromJson(Map<String, dynamic> json) {
     return PaymentResultModel(
       provider: json['provider'] as String? ?? '',
@@ -127,40 +179,6 @@ class PaymentResultModel {
       paymentUrl: json['paymentUrl'] as String? ?? '',
       amount: (json['amount'] as num?)?.toDouble() ?? 0,
       qrCode: json['qrCode'] as String?,
-    );
-  }
-}
-
-/// Một giao dịch trong lịch sử thanh toán.
-class PaymentTransactionModel {
-  final int id;
-  final int feeInvoiceId;
-  final String provider;
-  final String orderCode;
-  final double amount;
-  final String status; // Pending | Paid | Failed…
-  final DateTime createdAt;
-
-  PaymentTransactionModel({
-    required this.id,
-    required this.feeInvoiceId,
-    required this.provider,
-    required this.orderCode,
-    required this.amount,
-    required this.status,
-    required this.createdAt,
-  });
-
-  factory PaymentTransactionModel.fromJson(Map<String, dynamic> json) {
-    return PaymentTransactionModel(
-      id: json['id'] as int,
-      feeInvoiceId: json['feeInvoiceId'] as int? ?? 0,
-      provider: json['provider'] as String? ?? '',
-      orderCode: json['orderCode'] as String? ?? '',
-      amount: (json['amount'] as num?)?.toDouble() ?? 0,
-      status: json['status'] as String? ?? '',
-      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
-          DateTime.now(),
     );
   }
 }

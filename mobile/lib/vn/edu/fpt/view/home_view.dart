@@ -209,7 +209,7 @@ List<_TabItem> _buildTabs(
     case 'Teacher':
       return [
         home,
-        _TabItem(id: 'class', icon: Icons.class_, label: 'Lớp học', body: TeacherClassTab(user: user)),
+        _TabItem(id: 'class', icon: Icons.calendar_month, label: 'Lịch dạy', body: TeacherClassTab(user: user)),
         noti,
         profile,
       ];

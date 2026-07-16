@@ -1,11 +1,21 @@
-/// Model 1 thông báo cá nhân (in-app) — khớp NotificationDto bên API.
-/// Dùng cho Trung tâm thông báo (FR1.4).
+/// Thông báo in-app cá nhân (FR1.4) — khớp `NotificationDto` bên API.
+///
+/// Quan hệ server: N `Notification` → 1 `User` (người nhận).
 class NotificationModel {
+  /// Id thông báo.
   final int id;
-  final String title; // tiêu đề (vd "Điểm mới")
-  final String message; // nội dung
-  bool isRead; // đã đọc chưa (KHÔNG final: cập nhật tại chỗ khi đọc)
-  final DateTime createdAt; // thời điểm nhận
+
+  /// Tiêu đề ngắn (vd. "Điểm mới").
+  final String title;
+
+  /// Nội dung chi tiết.
+  final String message;
+
+  /// Đã đọc chưa — không `final` để cập nhật tại chỗ khi user mở tin.
+  bool isRead;
+
+  /// Thời điểm nhận.
+  final DateTime createdAt;
 
   NotificationModel({
     required this.id,
@@ -15,10 +25,7 @@ class NotificationModel {
     required this.createdAt,
   });
 
-  /// factory fromJson: tạo [NotificationModel] từ Map JSON API trả về.
-  ///
-  /// Nhận: [json] — 1 phần tử trong mảng "items" của /api/notifications.
-  /// Trả về: object [NotificationModel].
+  /// Parse 1 phần tử trong danh sách `/api/notifications`.
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     return NotificationModel(
       id: json['id'] as int,

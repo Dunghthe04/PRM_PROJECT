@@ -23,7 +23,8 @@ public interface ITimetableService
         int userId, UserRole role, int? studentId, DateTime? weekStart, int? semesterId = null);
 
     /// <summary>Lịch dạy của GV đang login.</summary>
-    Task<(WeeklyTimetableDto? Result, string? Error)> GetTeacherAsync(int teacherId, DateTime? weekStart);
+    Task<(WeeklyTimetableDto? Result, string? Error)> GetTeacherAsync(
+        int teacherId, DateTime? weekStart, int? semesterId = null);
 
     /// <summary>Tạo tiết mới.</summary>
     Task<(TimetableSlotDto? Result, string? Error)> CreateAsync(CreateUpdateTimetableSlotDto dto);
@@ -98,6 +99,8 @@ public class TimetableService : ITimetableService
         if (!resolvedSemesterId.HasValue)
             return (BuildWeekly(new List<TimetableSlot>(), weekStart), null);
 
+        // 2 bước (tránh join ClassStudents→Slots — SQL Server hay chọn plan ~25s):
+        // 1) lấy classId trong kỳ  2) lấy tiết theo ClassId (=) như GET /timetable?classId=
         var classIds = await (
             from cs in _context.ClassStudents.AsNoTracking()
             join c in _context.Classes.AsNoTracking() on cs.ClassId equals c.Id
@@ -152,8 +155,9 @@ public class TimetableService : ITimetableService
         return (0, "Vai trò không được phép truy cập dữ liệu học tập cá nhân.");
     }
 
-    /// <summary>GV: các tiết có TeacherId = user hiện tại.</summary>
-    public async Task<(WeeklyTimetableDto? Result, string? Error)> GetTeacherAsync(int teacherId, DateTime? weekStart)
+    /// <summary>GV: các tiết có TeacherId = user hiện tại (lọc kỳ nếu có).</summary>
+    public async Task<(WeeklyTimetableDto? Result, string? Error)> GetTeacherAsync(
+        int teacherId, DateTime? weekStart, int? semesterId = null)
     {
         var user = await _userRepository.GetUserByIdAsync(teacherId);
         if (user == null) return (null, "Không tìm thấy giáo viên.");
@@ -161,7 +165,10 @@ public class TimetableService : ITimetableService
         if (user.Role is not (UserRole.Teacher))
             return (null, "Endpoint này dành cho giáo viên.");
 
-        var slots = await _timetableRepository.GetByTeacherAsync(teacherId);
+        // Lọc theo kỳ → tránh gộp TKB nhiều năm (nhanh + đúng màn GV).
+        var slots = semesterId.HasValue
+            ? await _timetableRepository.GetByTeacherAsync(teacherId, semesterId.Value)
+            : await _timetableRepository.GetByTeacherAsync(teacherId);
         return (BuildWeekly(slots, weekStart), null);
     }
 

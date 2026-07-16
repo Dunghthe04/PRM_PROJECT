@@ -8,6 +8,7 @@ import '../model/user_model.dart';
 import 'announcement_view.dart';
 import 'fee_view.dart';
 import 'leave_request_view.dart';
+import 'teacher_class_picker_view.dart';
 
 /// Tab Trang chủ / Dashboard (FR2.2): màn tổng quan khi mở app.
 /// Hiển thị lời chào, lối tắt theo vai trò, và bảng tin gần đây.
@@ -144,26 +145,46 @@ class _DashboardTabState extends State<DashboardTab> {
       case 'Teacher':
         return [
           _ActionCard(
-              icon: Icons.class_,
-              label: 'Lớp học',
+              icon: Icons.calendar_month,
+              label: 'Lịch dạy',
               onTap: () => widget.onNavigateTab('class')),
           notiCard,
           _ActionCard(
               icon: Icons.checklist,
               label: 'Điểm danh',
-              onTap: () => widget.onNavigateTab('class')),
-          _ActionCard(
-              icon: Icons.assignment,
-              label: 'Bài tập',
-              onTap: () => widget.onNavigateTab('class')),
+              onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => TeacherClassPickerPage(
+                        user: widget.user,
+                        action: TeacherClassAction.attendance,
+                      ),
+                    ),
+                  )),
           _ActionCard(
               icon: Icons.event_busy,
               label: 'Duyệt đơn',
-              onTap: () => widget.onNavigateTab('class')),
+              onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => TeacherClassPickerPage(
+                        user: widget.user,
+                        action: TeacherClassAction.leave,
+                      ),
+                    ),
+                  )),
           _ActionCard(
               icon: Icons.campaign,
               label: 'Gửi TB',
-              onTap: () => widget.onNavigateTab('class')),
+              onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => TeacherClassPickerPage(
+                        user: widget.user,
+                        action: TeacherClassAction.announce,
+                      ),
+                    ),
+                  )),
         ];
       case 'Admin':
         return [
