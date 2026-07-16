@@ -26,6 +26,8 @@ class _LoginViewState extends State<LoginView> {
 
   bool _isLoading = false; // true khi đang gọi API (hiện vòng xoay)
   String? _errorMessage; // null = không lỗi; có chuỗi = hiện lỗi đỏ
+  /// false = ẩn mật khẩu (●●●); true = hiện chữ thường.
+  bool _obscurePassword = true;
 
 
   /// Xử lý khi bấm nút Đăng nhập.
@@ -133,26 +135,42 @@ class _LoginViewState extends State<LoginView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch, // kéo rộng hết ngang
                 children: [
-                  // Logo tạm bằng icon
-                  const Icon(Icons.school, size: 72, color: AppColors.primary),
-                  const SizedBox(height: 16), // khoảng cách 16px
+                  // Logo FPT (PNG nền trong suốt) — to, căn giữa.
+                  Center(
+                    child: Image.asset(
+                      'assets/images/fpt_logo.png',
+                      height: 96,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.high,
+                      errorBuilder: (_, _, _) => const Icon(
+                        Icons.school,
+                        size: 72,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
 
                   const Text(
                     'FSchool',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 28,
+                      fontSize: 30,
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary,
+                      letterSpacing: 0.5,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   const Text(
                     'Sổ liên lạc điện tử',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.textGrey),
+                    style: TextStyle(
+                      color: AppColors.textGrey,
+                      fontSize: 15,
+                    ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 36),
 
                   // Ô nhập số điện thoại
                   TextField(
@@ -165,13 +183,26 @@ class _LoginViewState extends State<LoginView> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Ô nhập mật khẩu
+                  // Ô nhập mật khẩu + nút mắt hiện/ẩn
                   TextField(
                     controller: _passwordController,
-                    obscureText: true, // ẩn ký tự (hiện ●●●)
-                    decoration: const InputDecoration(
+                    obscureText: _obscurePassword,
+                    decoration: InputDecoration(
                       labelText: 'Mật khẩu',
-                      prefixIcon: Icon(Icons.lock),
+                      prefixIcon: const Icon(Icons.lock),
+                      suffixIcon: IconButton(
+                        tooltip: _obscurePassword
+                            ? 'Hiện mật khẩu'
+                            : 'Ẩn mật khẩu',
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),

@@ -41,8 +41,13 @@ public class TimetableRepository : ITimetableRepository
         _context = context;
     }
 
+    /// <summary>
+    /// AsNoTracking + join tường minh — tránh Include/tracking làm chậm khi nhiều tiết
+    /// (HS ghi danh nhiều kỳ → hàng trăm slot).
+    /// </summary>
     private IQueryable<TimetableSlot> QueryWithIncludes() =>
         _context.TimetableSlots
+            .AsNoTracking()
             .Include(t => t.Class)
             .Include(t => t.Subject)
             .Include(t => t.Teacher);
@@ -60,12 +65,45 @@ public class TimetableRepository : ITimetableRepository
     /// <inheritdoc />
     public async Task<List<TimetableSlot>> GetByClassIdsAsync(IEnumerable<int> classIds)
     {
-        var ids = classIds.ToList();
-        return await QueryWithIncludes()
+        var ids = classIds.Distinct().ToList();
+        if (ids.Count == 0) return new List<TimetableSlot>();
+
+        // Projection anonymous → gắn navigation nhẹ trong memory (tránh Include/tracking).
+        var rows = await _context.TimetableSlots
+            .AsNoTracking()
             .Where(t => ids.Contains(t.ClassId))
             .OrderBy(t => t.DayOfWeek)
             .ThenBy(t => t.Period)
+            .Select(t => new
+            {
+                t.Id,
+                t.ClassId,
+                ClassName = t.Class.Name,
+                t.Class.SemesterId,
+                t.SubjectId,
+                SubjectName = t.Subject.Name,
+                SubjectCode = t.Subject.Code,
+                t.TeacherId,
+                TeacherName = t.Teacher.FullName,
+                t.DayOfWeek,
+                t.Period,
+                t.Room,
+            })
             .ToListAsync();
+
+        return rows.Select(r => new TimetableSlot
+        {
+            Id = r.Id,
+            ClassId = r.ClassId,
+            SubjectId = r.SubjectId,
+            TeacherId = r.TeacherId,
+            DayOfWeek = r.DayOfWeek,
+            Period = r.Period,
+            Room = r.Room,
+            Class = new Class { Id = r.ClassId, Name = r.ClassName, SemesterId = r.SemesterId },
+            Subject = new Subject { Id = r.SubjectId, Name = r.SubjectName, Code = r.SubjectCode },
+            Teacher = new User { Id = r.TeacherId, FullName = r.TeacherName },
+        }).ToList();
     }
 
     /// <inheritdoc />

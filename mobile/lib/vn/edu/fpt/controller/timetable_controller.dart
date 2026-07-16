@@ -18,6 +18,7 @@ class TimetableController {
   Future<(WeeklyTimetableModel?, String?)> getMyWeek({
     DateTime? weekStart,
     int? studentId,
+    int? semesterId,
   }) async {
     try {
       // Gộp các query có giá trị vào 1 map (bỏ qua null).
@@ -27,6 +28,7 @@ class TimetableController {
         query['weekStart'] = weekStart.toIso8601String();
       }
       if (studentId != null) query['studentId'] = studentId;
+      if (semesterId != null) query['semesterId'] = semesterId;
 
       final response = await _apiClient.dio.get(
         '/timetable/me',

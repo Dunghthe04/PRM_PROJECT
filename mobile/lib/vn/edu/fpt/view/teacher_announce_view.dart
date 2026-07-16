@@ -36,6 +36,7 @@ class _TeacherAnnouncePageState extends State<TeacherAnnouncePage> {
       content: _content.text.trim(),
       type: 'Class',
       targetClassId: widget.teacherClass.classId,
+      subjectId: widget.teacherClass.subjectId,
       sendPush: _sendPush,
     );
     if (!mounted) return;

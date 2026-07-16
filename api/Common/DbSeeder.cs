@@ -146,19 +146,12 @@ public static class DbSeeder
     /// </summary>
     private static async Task SeedAcademicAsync(AppDbContext db, User teacher)
     {
-        // --- Học kỳ hiện tại ---
-        var semester = await db.Semesters.FirstOrDefaultAsync(s => s.Name == "Học kỳ 1 (2026-2027)");
-        if (semester == null)
-        {
-            semester = new Semester
-            {
-                Name = "Học kỳ 1 (2026-2027)",
-                StartDate = new DateTime(2026, 9, 1),
-                EndDate = new DateTime(2027, 1, 15),
-            };
-            db.Semesters.Add(semester);
-            await db.SaveChangesAsync();
-        }
+        // --- Học kỳ theo lịch THPT VN: mỗi năm học = HK1 + HK2, giữa 2 kỳ nghỉ Tết, cuối năm nghỉ hè ---
+        // Năm học YYYY-(YYYY+1):
+        //   HK1: 05/09/YYYY → 15/01/(YYYY+1)
+        //   HK2: 01/02/(YYYY+1) → 25/05/(YYYY+1)
+        //   Nghỉ hè: ~26/05 → đầu tháng 9 năm sau (không có Semester)
+        var semesters = await EnsureVnSemestersAsync(db, startSchoolYear: 2025, yearCount: 4);
 
         // --- Các môn học (tạo nếu thiếu, khớp theo Code) ---
         var math = await EnsureSubjectAsync(db, "Toán", "MATH");
@@ -168,132 +161,51 @@ public static class DbSeeder
         var chemistry = await EnsureSubjectAsync(db, "Hóa Học", "CHE");
         await db.SaveChangesAsync();
 
-        // --- Lớp 10A1 thuộc học kỳ trên ---
-        var cls = await db.Classes.FirstOrDefaultAsync(c => c.Name == "10A1");
-        if (cls == null)
-        {
-            cls = new Class { Name = "10A1", SemesterId = semester.Id };
-            db.Classes.Add(cls);
-            await db.SaveChangesAsync();
-        }
-
-        // --- Ghi danh: mọi học sinh CHƯA có lớp → vào lớp 10A1 ---
-        // (đảm bảo tài khoản HS test bạn tự tạo cũng có TKB để xem giao diện)
-        var classlessStudents = await db.Users
-            .Where(u => u.Role == UserRole.Student
-                && !db.ClassStudents.Any(cs => cs.StudentId == u.Id))
-            .ToListAsync();
-        foreach (var s in classlessStudents)
-        {
-            db.ClassStudents.Add(new ClassStudent { ClassId = cls.Id, StudentId = s.Id });
-        }
-        await db.SaveChangesAsync();
-
-        // --- Phân công GV dạy các môn cho lớp (nếu chưa có) ---
         var subjects = new[] { math, literature, english, physics, chemistry };
-        foreach (var subj in subjects)
-        {
-            var assigned = await db.TeacherAssignments.AnyAsync(ta =>
-                ta.TeacherId == teacher.Id && ta.ClassId == cls.Id && ta.SubjectId == subj.Id);
-            if (!assigned)
-            {
-                db.TeacherAssignments.Add(new TeacherAssignment
-                {
-                    TeacherId = teacher.Id,
-                    ClassId = cls.Id,
-                    SubjectId = subj.Id,
-                });
-            }
-        }
-        await db.SaveChangesAsync();
+        Class? primaryClass = null;
 
-        // --- Thời khóa biểu tuần (chỉ seed khi lớp chưa có tiết nào) ---
-        if (!await db.TimetableSlots.AnyAsync(t => t.ClassId == cls.Id))
+        // Gắn lớp 10A1 seed cũ (nếu có) vào HK1 2026-2027 trước khi tạo theo từng kỳ.
+        var hk1_2627 = semesters.First(s => s.Name == "Học kỳ 1 (2026-2027)");
+        var legacy10A1 = await db.Classes.FirstOrDefaultAsync(c => c.Name == "10A1");
+        if (legacy10A1 != null &&
+            !await db.Classes.AnyAsync(c => c.Name == "10A1" && c.SemesterId == hk1_2627.Id))
         {
-            // (thứ, tiết, môn, phòng) — 1 = Thứ Hai … 6 = Thứ Bảy
-            var plan = new (int Day, int Period, Subject Subject, string Room)[]
-            {
-                (1, 1, math, "A101"),
-                (1, 2, literature, "A101"),
-                (1, 3, english, "A101"),
-                (2, 1, physics, "Lab-1"),
-                (2, 2, math, "A101"),
-                (2, 3, chemistry, "Lab-2"),
-                (3, 1, literature, "A101"),
-                (3, 2, english, "A101"),
-                (3, 3, math, "A101"),
-                (4, 1, math, "A101"),
-                (4, 2, physics, "Lab-1"),
-                (4, 3, literature, "A101"),
-                (5, 1, english, "A101"),
-                (5, 2, chemistry, "Lab-2"),
-                (5, 3, math, "A101"),
-            };
-            foreach (var p in plan)
-            {
-                db.TimetableSlots.Add(new TimetableSlot
-                {
-                    ClassId = cls.Id,
-                    SubjectId = p.Subject.Id,
-                    TeacherId = teacher.Id,
-                    DayOfWeek = p.Day,
-                    Period = p.Period,
-                    Room = p.Room,
-                });
-            }
+            legacy10A1.SemesterId = hk1_2627.Id;
             await db.SaveChangesAsync();
         }
 
-        // --- Điểm đã công bố cho từng học sinh trong lớp (nếu lớp chưa có điểm) ---
-        if (!await db.Grades.AnyAsync(g => g.ClassId == cls.Id))
+        foreach (var sem in semesters)
         {
-            var studentIds = await db.ClassStudents
-                .Where(cs => cs.ClassId == cls.Id)
-                .Select(cs => cs.StudentId)
-                .ToListAsync();
+            var cls = await EnsureClass10A1Async(db, sem, teacher, subjects,
+                math, literature, english, physics, chemistry);
 
-            // (môn, loại đầu điểm, điểm) — dùng chung cho các HS cho gọn.
-            var gradePlan = new (Subject Subject, string Type, double Score)[]
-            {
-                (math, "Oral", 8.5),
-                (math, "Midterm", 7.5),
-                (literature, "Midterm", 8.0),
-                (english, "Oral", 9.0),
-                (physics, "Quiz15", 7.0),
-            };
-            foreach (var sid in studentIds)
-            {
-                foreach (var gp in gradePlan)
-                {
-                    db.Grades.Add(new Grade
-                    {
-                        StudentId = sid,
-                        ClassId = cls.Id,
-                        SubjectId = gp.Subject.Id,
-                        SemesterId = semester.Id,
-                        AssessmentType = gp.Type,
-                        Score = gp.Score,
-                        Status = GradeStatus.Published, // HS/PH mới xem được
-                        CreatedByTeacherId = teacher.Id,
-                        PublishedAt = DateTime.UtcNow.AddDays(-1),
-                        CreatedAt = DateTime.UtcNow.AddDays(-2),
-                    });
-                }
-            }
-            await db.SaveChangesAsync();
+            var today = DateTime.UtcNow.Date;
+            if (sem.StartDate.Date <= today && today <= sem.EndDate.Date)
+                primaryClass = cls;
+            if (primaryClass == null && sem.Name == "Học kỳ 1 (2026-2027)")
+                primaryClass = cls;
         }
 
-        // --- Bài tập mẫu cho lớp (nếu lớp chưa có bài tập) ---
-        if (!await db.Assignments.AnyAsync(a => a.ClassId == cls.Id))
+        primaryClass ??= await db.Classes.FirstAsync(c => c.Name == "10A1");
+        var cls2 = primaryClass;
+        var semester = await db.Semesters.FindAsync(cls2.SemesterId) ?? hk1_2627;
+
+        // --- Điểm đã công bố đủ form THPT (Miệng / 15p / 1 tiết / GK / CK) ---
+        await EnsureThptGradesAsync(
+            db, cls2, semester, teacher,
+            math, literature, english, physics);
+
+        // --- Bài tập mẫu ---
+        if (!await db.Assignments.AnyAsync(a => a.ClassId == cls2.Id))
         {
             db.Assignments.AddRange(
                 new Assignment
                 {
                     Title = "Bài tập Toán - Chương 1",
                     Description = "Làm các bài 1 đến 10 trang 25 SGK.",
-                    DueDate = DateTime.UtcNow.AddDays(-2), // đã quá hạn → Overdue
+                    DueDate = DateTime.UtcNow.AddDays(-2),
                     MaxScore = 10,
-                    ClassId = cls.Id,
+                    ClassId = cls2.Id,
                     SubjectId = math.Id,
                     CreatedByTeacherId = teacher.Id,
                     CreatedAt = DateTime.UtcNow.AddDays(-5),
@@ -302,9 +214,9 @@ public static class DbSeeder
                 {
                     Title = "Luyện tập Ngữ Văn - Bài thơ",
                     Description = "Viết đoạn văn cảm nhận về bài thơ đã học (khoảng 200 từ).",
-                    DueDate = DateTime.UtcNow.AddDays(3), // còn hạn → ToDo
+                    DueDate = DateTime.UtcNow.AddDays(3),
                     MaxScore = 10,
-                    ClassId = cls.Id,
+                    ClassId = cls2.Id,
                     SubjectId = literature.Id,
                     CreatedByTeacherId = teacher.Id,
                     CreatedAt = DateTime.UtcNow.AddDays(-1),
@@ -313,7 +225,7 @@ public static class DbSeeder
             await db.SaveChangesAsync();
         }
 
-        // --- Học phí: loại khoản thu + hóa đơn cho từng HS (nếu chưa có) ---
+        // --- Học phí ---
         var tuition = await EnsureFeeCategoryAsync(db, "Học phí Học kỳ 1", 1500000);
         var insurance = await EnsureFeeCategoryAsync(db, "Bảo hiểm y tế", 800000);
         await db.SaveChangesAsync();
@@ -321,7 +233,7 @@ public static class DbSeeder
         if (!await db.FeeInvoices.AnyAsync())
         {
             var studentIds = await db.ClassStudents
-                .Where(cs => cs.ClassId == cls.Id)
+                .Where(cs => cs.ClassId == cls2.Id)
                 .Select(cs => cs.StudentId)
                 .ToListAsync();
 
@@ -407,6 +319,93 @@ public static class DbSeeder
         await db.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// Đảm bảo đủ đầu điểm form sổ điểm THPT (hệ số 1/1/2/2/3) cho vài môn demo.
+    /// Chỉ thêm bản ghi còn thiếu — không ghi đè điểm đã có.
+    /// </summary>
+    private static async Task EnsureThptGradesAsync(
+        AppDbContext db,
+        Class cls,
+        Semester semester,
+        User teacher,
+        Subject math,
+        Subject literature,
+        Subject english,
+        Subject physics)
+    {
+        var studentIds = await db.ClassStudents
+            .Where(cs => cs.ClassId == cls.Id)
+            .Select(cs => cs.StudentId)
+            .ToListAsync();
+        if (studentIds.Count == 0) return;
+
+        // (môn, loại, điểm) — Miệng HS1, 15 phút HS1, 1 tiết HS2, GK HS2, CK HS3.
+        var gradePlan = new (Subject Subject, string Type, double Score)[]
+        {
+            (math, "Oral", 8.5),
+            (math, "Quiz15", 7.5),
+            (math, "OnePeriod", 8.0),
+            (math, "Midterm", 7.5),
+            (math, "Final", 8.0),
+
+            (literature, "Oral", 8.0),
+            (literature, "Quiz15", 7.0),
+            (literature, "OnePeriod", 7.5),
+            (literature, "Midterm", 8.0),
+            (literature, "Final", 7.5),
+
+            (english, "Oral", 9.0),
+            (english, "Quiz15", 8.5),
+            (english, "OnePeriod", 8.0),
+            (english, "Midterm", 8.5),
+            (english, "Final", 9.0),
+
+            // Vật Lý: TB có hệ số < 5 → demo badge "Chưa đạt".
+            (physics, "Oral", 5.0),
+            (physics, "Quiz15", 4.5),
+            (physics, "OnePeriod", 4.0),
+            (physics, "Midterm", 4.0),
+            (physics, "Final", 3.0),
+        };
+
+        var existingKeys = await db.Grades
+            .Where(g => g.ClassId == cls.Id && g.SemesterId == semester.Id)
+            .Select(g => new { g.StudentId, g.SubjectId, g.AssessmentType })
+            .ToListAsync();
+        var existing = existingKeys
+            .Select(k => $"{k.StudentId}|{k.SubjectId}|{k.AssessmentType}")
+            .ToHashSet();
+
+        var added = 0;
+        foreach (var sid in studentIds)
+        {
+            foreach (var gp in gradePlan)
+            {
+                var key = $"{sid}|{gp.Subject.Id}|{gp.Type}";
+                if (existing.Contains(key)) continue;
+
+                db.Grades.Add(new Grade
+                {
+                    StudentId = sid,
+                    ClassId = cls.Id,
+                    SubjectId = gp.Subject.Id,
+                    SemesterId = semester.Id,
+                    AssessmentType = gp.Type,
+                    Score = gp.Score,
+                    Status = GradeStatus.Published,
+                    CreatedByTeacherId = teacher.Id,
+                    PublishedAt = DateTime.UtcNow.AddDays(-1),
+                    CreatedAt = DateTime.UtcNow.AddDays(-2),
+                });
+                existing.Add(key);
+                added++;
+            }
+        }
+
+        if (added > 0)
+            await db.SaveChangesAsync();
+    }
+
     /// <summary>Tạo loại khoản thu nếu tên chưa tồn tại; trả về (cũ hoặc mới).</summary>
     private static async Task<FeeCategory> EnsureFeeCategoryAsync(
         AppDbContext db, string name, decimal defaultAmount)
@@ -433,5 +432,140 @@ public static class DbSeeder
         subject = new Subject { Name = name, Code = code };
         db.Subjects.Add(subject);
         return subject;
+    }
+
+    /// <summary>
+    /// Seed các học kỳ theo lịch THPT VN (2 kỳ/năm, có khoảng nghỉ hè giữa các năm học).
+    /// </summary>
+    private static async Task<List<Semester>> EnsureVnSemestersAsync(
+        AppDbContext db, int startSchoolYear, int yearCount)
+    {
+        var result = new List<Semester>();
+        for (var y = startSchoolYear; y < startSchoolYear + yearCount; y++)
+        {
+            // HK1: 5/9/y → 15/1/(y+1) | HK2: 1/2/(y+1) → 25/5/(y+1)
+            var specs = new (string Name, DateTime Start, DateTime End)[]
+            {
+                ($"Học kỳ 1 ({y}-{y + 1})", new DateTime(y, 9, 5), new DateTime(y + 1, 1, 15)),
+                ($"Học kỳ 2 ({y}-{y + 1})", new DateTime(y + 1, 2, 1), new DateTime(y + 1, 5, 25)),
+            };
+            foreach (var (name, start, end) in specs)
+            {
+                var sem = await db.Semesters.FirstOrDefaultAsync(s => s.Name == name);
+                if (sem == null)
+                {
+                    sem = new Semester { Name = name, StartDate = start, EndDate = end };
+                    db.Semesters.Add(sem);
+                    await db.SaveChangesAsync();
+                }
+                else
+                {
+                    // Đồng bộ lại khoảng ngày (idempotent fix lịch cũ).
+                    if (sem.StartDate.Date != start.Date || sem.EndDate.Date != end.Date)
+                    {
+                        sem.StartDate = start;
+                        sem.EndDate = end;
+                        await db.SaveChangesAsync();
+                    }
+                }
+                result.Add(sem);
+            }
+        }
+        return result;
+    }
+
+    /// <summary>Đảm bảo lớp 10A1 của 1 kỳ + ghi danh + phân công + TKB.</summary>
+    private static async Task<Class> EnsureClass10A1Async(
+        AppDbContext db,
+        Semester semester,
+        User teacher,
+        Subject[] subjects,
+        Subject math, Subject literature, Subject english, Subject physics, Subject chemistry)
+    {
+        var cls = await db.Classes.FirstOrDefaultAsync(c =>
+            c.Name == "10A1" && c.SemesterId == semester.Id);
+        if (cls == null)
+        {
+            cls = new Class { Name = "10A1", SemesterId = semester.Id };
+            db.Classes.Add(cls);
+            await db.SaveChangesAsync();
+        }
+
+        var studentIds = await db.Users
+            .Where(u => u.Role == UserRole.Student)
+            .Select(u => u.Id)
+            .ToListAsync();
+        var enrolled = await db.ClassStudents
+            .Where(cs => cs.ClassId == cls.Id)
+            .Select(cs => cs.StudentId)
+            .ToListAsync();
+        var enrolledSet = enrolled.ToHashSet();
+        foreach (var sid in studentIds)
+        {
+            if (!enrolledSet.Contains(sid))
+                db.ClassStudents.Add(new ClassStudent { ClassId = cls.Id, StudentId = sid });
+        }
+        await db.SaveChangesAsync();
+
+        var assignedSubjectIds = await db.TeacherAssignments
+            .Where(ta => ta.TeacherId == teacher.Id && ta.ClassId == cls.Id)
+            .Select(ta => ta.SubjectId)
+            .ToListAsync();
+        var assignedSet = assignedSubjectIds.ToHashSet();
+        foreach (var subj in subjects)
+        {
+            if (!assignedSet.Contains(subj.Id))
+            {
+                db.TeacherAssignments.Add(new TeacherAssignment
+                {
+                    TeacherId = teacher.Id,
+                    ClassId = cls.Id,
+                    SubjectId = subj.Id,
+                });
+            }
+        }
+        await db.SaveChangesAsync();
+
+        await EnsureTimetableForClassAsync(db, cls, teacher, math, literature, english, physics, chemistry);
+        return cls;
+    }
+
+    private static async Task EnsureTimetableForClassAsync(
+        AppDbContext db, Class cls, User teacher,
+        Subject math, Subject literature, Subject english, Subject physics, Subject chemistry)
+    {
+        if (await db.TimetableSlots.AnyAsync(t => t.ClassId == cls.Id)) return;
+
+        var plan = new (int Day, int Period, Subject Subject, string Room)[]
+        {
+            (1, 1, math, "A101"),
+            (1, 2, literature, "A101"),
+            (1, 3, english, "A101"),
+            (2, 1, physics, "Lab-1"),
+            (2, 2, math, "A101"),
+            (2, 3, chemistry, "Lab-2"),
+            (3, 1, literature, "A101"),
+            (3, 2, english, "A101"),
+            (3, 3, math, "A101"),
+            (4, 1, math, "A101"),
+            (4, 2, physics, "Lab-1"),
+            (4, 3, literature, "A101"),
+            (5, 1, english, "A101"),
+            (5, 2, chemistry, "Lab-2"),
+            (5, 3, math, "A101"),
+        };
+        foreach (var p in plan)
+        {
+            db.TimetableSlots.Add(new TimetableSlot
+            {
+                ClassId = cls.Id,
+                SubjectId = p.Subject.Id,
+                TeacherId = teacher.Id,
+                DayOfWeek = p.Day,
+                Period = p.Period,
+                Room = p.Room,
+            });
+        }
+        await db.SaveChangesAsync();
     }
 }

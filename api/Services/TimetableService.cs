@@ -20,7 +20,7 @@ public interface ITimetableService
     ///   Nếu PH không truyền studentId → tự lấy người con đầu tiên.
     /// </summary>
     Task<(WeeklyTimetableDto? Result, string? Error)> GetMyAsync(
-        int userId, UserRole role, int? studentId, DateTime? weekStart);
+        int userId, UserRole role, int? studentId, DateTime? weekStart, int? semesterId = null);
 
     /// <summary>Lịch dạy của GV đang login.</summary>
     Task<(WeeklyTimetableDto? Result, string? Error)> GetTeacherAsync(int teacherId, DateTime? weekStart);
@@ -71,9 +71,9 @@ public class TimetableService : ITimetableService
         return (BuildWeekly(slots, weekStart), null);
     }
 
-    /// <summary>HS: lấy mọi lớp đang học → gộp TKB.</summary>
+    /// <summary>HS: lấy lớp đang học → TKB (lọc theo semesterId nếu có).</summary>
     public async Task<(WeeklyTimetableDto? Result, string? Error)> GetMyAsync(
-        int userId, UserRole role, int? studentId, DateTime? weekStart)
+        int userId, UserRole role, int? studentId, DateTime? weekStart, int? semesterId = null)
     {
         // Xác định "học sinh mục tiêu" cần lấy TKB.
         // - HS: chính là bản thân.
@@ -81,13 +81,30 @@ public class TimetableService : ITimetableService
         var (targetStudentId, error) = await ResolveTargetStudentAsync(userId, role, studentId);
         if (error != null) return (null, error);
 
-        // Lấy các lớp mà học sinh mục tiêu đang thuộc về.
-        var classIds = await _context.ClassStudents
-            .Where(cs => cs.StudentId == targetStudentId)
-            .Select(cs => cs.ClassId)
-            .ToListAsync();
+        // Chỉ lấy lớp trong 1 kỳ (semesterId hoặc suy từ tuần đang xem) — không bao giờ gộp cả nhiều năm.
+        var resolvedSemesterId = semesterId;
+        if (!resolvedSemesterId.HasValue)
+        {
+            var start = NormalizeToMonday(weekStart ?? DateTime.UtcNow).Date;
+            var end = start.AddDays(6);
+            resolvedSemesterId = await _context.Semesters.AsNoTracking()
+                .Where(s => s.StartDate.Date <= end && s.EndDate.Date >= start)
+                .OrderByDescending(s => s.StartDate)
+                .Select(s => (int?)s.Id)
+                .FirstOrDefaultAsync();
+        }
 
-        // Chưa xếp lớp → trả TKB rỗng (không coi là lỗi).
+        // Nghỉ hè / ngoài lịch kỳ → TKB rỗng (nhẹ), client đổi tuần khác sẽ query lại.
+        if (!resolvedSemesterId.HasValue)
+            return (BuildWeekly(new List<TimetableSlot>(), weekStart), null);
+
+        var classIds = await (
+            from cs in _context.ClassStudents.AsNoTracking()
+            join c in _context.Classes.AsNoTracking() on cs.ClassId equals c.Id
+            where cs.StudentId == targetStudentId && c.SemesterId == resolvedSemesterId.Value
+            select c.Id
+        ).Distinct().ToListAsync();
+
         if (classIds.Count == 0)
             return (BuildWeekly(new List<TimetableSlot>(), weekStart), null);
 

@@ -51,6 +51,7 @@ class AnnouncementController {
     required String content,
     required String type,
     int? targetClassId,
+    int? subjectId,
     bool sendPush = true,
   }) async {
     try {
@@ -59,6 +60,7 @@ class AnnouncementController {
         'content': content,
         'type': type,
         'targetClassId': targetClassId,
+        if (subjectId != null) 'subjectId': subjectId,
         'sendPush': sendPush,
       });
       if (response.statusCode == 200 || response.statusCode == 201) {

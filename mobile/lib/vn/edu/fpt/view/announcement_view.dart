@@ -4,11 +4,7 @@ import '../common/format_utils.dart';
 import '../controller/announcement_controller.dart';
 import '../model/announcement_model.dart';
 
-/// Tab Bảng tin (FR2.2): danh sách thông báo chung, kéo để làm mới,
-/// bấm 1 mục để xem chi tiết.
-///
-/// Là 1 tab nằm trong _MainShell (đã có Scaffold + AppBar) nên widget này
-/// KHÔNG tự tạo Scaffold, chỉ trả về phần nội dung.
+/// Tab Bảng tin (FR2.2): danh sách + bấm xem chi tiết đầy đủ.
 class AnnouncementTab extends StatefulWidget {
   const AnnouncementTab({super.key});
 
@@ -18,20 +14,17 @@ class AnnouncementTab extends StatefulWidget {
 
 class _AnnouncementTabState extends State<AnnouncementTab> {
   final AnnouncementController _controller = AnnouncementController();
-
-  // Future giữ kết quả gọi API (danh sách, lỗi). Gán lại mỗi lần làm mới.
   late Future<(List<AnnouncementModel>?, String?)> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = _controller.getList(); // bắt đầu tải khi mở tab
+    _future = _controller.getList();
   }
 
-  /// Tải lại danh sách (dùng cho nút thử lại + kéo làm mới).
   Future<void> _reload() async {
     setState(() => _future = _controller.getList());
-    await _future; // để RefreshIndicator biết khi nào tải xong
+    await _future;
   }
 
   @override
@@ -39,19 +32,16 @@ class _AnnouncementTabState extends State<AnnouncementTab> {
     return FutureBuilder<(List<AnnouncementModel>?, String?)>(
       future: _future,
       builder: (context, snapshot) {
-        // 1) Đang tải
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
         final (list, error) = snapshot.data ?? (null, 'Không tải được dữ liệu.');
 
-        // 2) Lỗi → hiện thông báo + nút thử lại
         if (error != null) {
           return _ErrorRetry(message: error, onRetry: _reload);
         }
 
-        // 3) Rỗng → thông báo trống (vẫn cho kéo làm mới)
         if (list == null || list.isEmpty) {
           return RefreshIndicator(
             onRefresh: _reload,
@@ -64,7 +54,6 @@ class _AnnouncementTabState extends State<AnnouncementTab> {
           );
         }
 
-        // 4) Có dữ liệu → danh sách card
         return RefreshIndicator(
           onRefresh: _reload,
           child: ListView.separated(
@@ -80,7 +69,6 @@ class _AnnouncementTabState extends State<AnnouncementTab> {
   }
 }
 
-/// 1 thẻ bảng tin trong danh sách.
 class _AnnouncementCard extends StatelessWidget {
   final AnnouncementModel item;
   const _AnnouncementCard({required this.item});
@@ -88,46 +76,117 @@ class _AnnouncementCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: ListTile(
-        // Icon phân biệt: toàn trường (campaign) vs theo lớp (class).
-        leading: CircleAvatar(
-          backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-          child: Icon(
-            item.isGlobal ? Icons.campaign : Icons.class_,
-            color: AppColors.primary,
-          ),
-        ),
-        title: Text(
-          item.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(item.content, maxLines: 2, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 4),
-            Text(
-              // Nhãn: toàn trường / tên lớp + thời gian tương đối.
-              '${item.isGlobal ? 'Toàn trường' : (item.targetClassName ?? 'Lớp')} • ${FormatUtils.timeAgo(item.createdAt)}',
-              style: const TextStyle(fontSize: 12, color: AppColors.textGrey),
-            ),
-          ],
-        ),
-        isThreeLine: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => AnnouncementDetailView(item: item)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                child: Icon(
+                  item.isGlobal ? Icons.campaign : Icons.class_,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.content,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        // Toàn trường: chỉ nhãn phạm vi (không hiện Admin).
+                        // Lớp: nhãn lớp + môn (thay cho tên GV).
+                        _MetaChip(
+                          icon: item.isGlobal ? Icons.campaign : Icons.class_,
+                          label: item.isGlobal
+                              ? 'Toàn trường'
+                              : (item.targetClassName ?? 'Lớp'),
+                        ),
+                        if (!item.isGlobal)
+                          _MetaChip(
+                            icon: Icons.menu_book,
+                            label: (item.subjectName?.isNotEmpty ?? false)
+                                ? item.subjectName!
+                                : 'Môn học',
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      FormatUtils.timeAgo(item.createdAt),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textGrey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: Colors.grey.shade400),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// Màn chi tiết 1 bảng tin (mở khi bấm vào 1 mục).
-/// Đây là màn riêng nên tự tạo Scaffold + AppBar.
-/// Public để Dashboard cũng tái sử dụng được.
+class _MetaChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _MetaChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: AppColors.primary),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primaryDark,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Chi tiết bảng tin (nội dung đầy đủ).
 class AnnouncementDetailView extends StatelessWidget {
   final AnnouncementModel item;
   const AnnouncementDetailView({super.key, required this.item});
@@ -135,9 +194,14 @@ class AnnouncementDetailView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Chi tiết thông báo')),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Chi tiết bảng tin'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.white,
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -145,31 +209,36 @@ class AnnouncementDetailView extends StatelessWidget {
               item.title,
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
-            Row(
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
               children: [
-                Icon(
-                  item.isGlobal ? Icons.campaign : Icons.class_,
-                  size: 16,
-                  color: AppColors.textGrey,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  item.isGlobal
+                _MetaChip(
+                  icon: item.isGlobal ? Icons.campaign : Icons.class_,
+                  label: item.isGlobal
                       ? 'Toàn trường'
                       : (item.targetClassName ?? 'Theo lớp'),
-                  style: const TextStyle(color: AppColors.textGrey),
                 ),
+                if (!item.isGlobal)
+                  _MetaChip(
+                    icon: Icons.menu_book,
+                    label: (item.subjectName?.isNotEmpty ?? false)
+                        ? item.subjectName!
+                        : 'Môn học',
+                  ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Text(
-              'Đăng bởi ${item.createdByName} • ${FormatUtils.dateTime(item.createdAt)}',
+              FormatUtils.dateTime(item.createdAt),
               style: const TextStyle(fontSize: 12, color: AppColors.textGrey),
             ),
             const Divider(height: 32),
-            // Nội dung đầy đủ (có thể dài).
-            Text(item.content, style: const TextStyle(fontSize: 16, height: 1.5)),
+            Text(
+              item.content,
+              style: const TextStyle(fontSize: 16, height: 1.55),
+            ),
           ],
         ),
       ),
@@ -177,7 +246,6 @@ class AnnouncementDetailView extends StatelessWidget {
   }
 }
 
-/// Widget hiển thị lỗi + nút thử lại (dùng chung trong tab này).
 class _ErrorRetry extends StatelessWidget {
   final String message;
   final Future<void> Function() onRetry;

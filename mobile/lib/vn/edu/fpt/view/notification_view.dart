@@ -4,11 +4,7 @@ import '../common/format_utils.dart';
 import '../controller/notification_controller.dart';
 import '../model/notification_model.dart';
 
-/// Tab Trung tâm thông báo (FR1.4): danh sách thông báo cá nhân,
-/// bấm để đánh dấu đã đọc, nút "đọc tất cả", kéo để làm mới.
-///
-/// [onUnreadChanged]: gọi lại mỗi khi số chưa đọc có thể thay đổi,
-/// để _MainShell cập nhật badge trên bottom navigation.
+/// Tab Trung tâm thông báo (FR1.4).
 class NotificationTab extends StatefulWidget {
   final VoidCallback? onUnreadChanged;
   const NotificationTab({super.key, this.onUnreadChanged});
@@ -27,36 +23,36 @@ class _NotificationTabState extends State<NotificationTab> {
     _future = _controller.getList();
   }
 
-  /// Tải lại danh sách.
   Future<void> _reload() async {
     setState(() => _future = _controller.getList());
     await _future;
-    widget.onUnreadChanged?.call(); // badge có thể đổi sau khi tải lại
+    widget.onUnreadChanged?.call();
   }
 
-  /// Bấm 1 thông báo → nếu chưa đọc thì gọi API đánh dấu đã đọc + đổi UI.
   Future<void> _onTapItem(NotificationModel item) async {
-    if (item.isRead) return; // đã đọc rồi thì thôi
-    final ok = await _controller.markRead(item.id);
-    if (ok && mounted) {
-      setState(() => item.isRead = true); // đổi tại chỗ (isRead không final)
-      widget.onUnreadChanged?.call(); // giảm badge
+    if (!item.isRead) {
+      final ok = await _controller.markRead(item.id);
+      if (ok && mounted) {
+        setState(() => item.isRead = true);
+        widget.onUnreadChanged?.call();
+      }
     }
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => NotificationDetailView(item: item)),
+    );
   }
 
-  /// Đánh dấu tất cả đã đọc.
   Future<void> _markAll() async {
     final ok = await _controller.markAllRead();
-    if (ok && mounted) {
-      await _reload(); // tải lại để mọi item về trạng thái đã đọc
-    }
+    if (ok && mounted) await _reload();
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Thanh nút "Đánh dấu tất cả đã đọc" ở đầu tab.
         Align(
           alignment: Alignment.centerRight,
           child: TextButton.icon(
@@ -65,7 +61,6 @@ class _NotificationTabState extends State<NotificationTab> {
             label: const Text('Đánh dấu đã đọc tất cả'),
           ),
         ),
-        // Danh sách chiếm phần còn lại.
         Expanded(
           child: FutureBuilder<(List<NotificationModel>?, String?)>(
             future: _future,
@@ -101,18 +96,19 @@ class _NotificationTabState extends State<NotificationTab> {
                   itemBuilder: (context, index) {
                     final item = list[index];
                     return ListTile(
-                      // Chấm cam = chưa đọc; xám nhạt = đã đọc.
                       leading: Icon(
                         item.isRead
                             ? Icons.notifications_none
                             : Icons.notifications_active,
-                        color:
-                            item.isRead ? AppColors.textGrey : AppColors.primary,
+                        color: item.isRead
+                            ? AppColors.textGrey
+                            : AppColors.primary,
                       ),
                       title: Text(
                         item.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          // Chưa đọc → in đậm cho nổi bật.
                           fontWeight: item.isRead
                               ? FontWeight.normal
                               : FontWeight.bold,
@@ -121,15 +117,26 @@ class _NotificationTabState extends State<NotificationTab> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(item.message),
+                          Text(
+                            item.message,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           const SizedBox(height: 2),
                           Text(
                             FormatUtils.timeAgo(item.createdAt),
                             style: const TextStyle(
-                                fontSize: 12, color: AppColors.textGrey),
+                              fontSize: 12,
+                              color: AppColors.textGrey,
+                            ),
                           ),
                         ],
                       ),
+                      trailing: Icon(
+                        Icons.chevron_right,
+                        color: Colors.grey.shade400,
+                      ),
+                      isThreeLine: true,
                       onTap: () => _onTapItem(item),
                     );
                   },
@@ -143,7 +150,46 @@ class _NotificationTabState extends State<NotificationTab> {
   }
 }
 
-/// Widget hiển thị lỗi + nút thử lại.
+/// Xem nội dung thông báo đầy đủ (có thể dài).
+class NotificationDetailView extends StatelessWidget {
+  final NotificationModel item;
+  const NotificationDetailView({super.key, required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Chi tiết thông báo'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              item.title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              FormatUtils.dateTime(item.createdAt),
+              style: const TextStyle(fontSize: 12, color: AppColors.textGrey),
+            ),
+            const Divider(height: 28),
+            Text(
+              item.message,
+              style: const TextStyle(fontSize: 16, height: 1.55),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ErrorRetry extends StatelessWidget {
   final String message;
   final Future<void> Function() onRetry;

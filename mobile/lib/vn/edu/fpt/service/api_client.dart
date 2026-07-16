@@ -16,7 +16,7 @@ class ApiClient{
       BaseOptions(
         baseUrl: AppConfig.apiBaseUrl, // gốc URL, sau này chỉ cần ghi '/auth/login'
         connectTimeout: const Duration(seconds: 15), // chờ kết nối tối đa 15s
-        receiveTimeout: const Duration(seconds: 15), // chờ phản hồi tối đa 15s
+        receiveTimeout: const Duration(seconds: 30), // chờ phản hồi tối đa 30s
         // Không tự ném lỗi với status < 500 để mình tự xử lý message từ API
         validateStatus: (status) => status != null && status < 500,
       ),

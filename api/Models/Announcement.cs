@@ -19,6 +19,12 @@ public class Announcement
     public int? TargetClassId { get; set; }
     public Class? TargetClass { get; set; }
 
+    /// <summary>
+    /// Môn liên quan khi GV gửi TB lớp (FR3.4) — null với Global hoặc Admin không chọn môn.
+    /// </summary>
+    public int? SubjectId { get; set; }
+    public Subject? Subject { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 }

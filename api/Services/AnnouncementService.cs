@@ -44,13 +44,16 @@ public class AnnouncementService : IAnnouncementService
     {
         var classIds = await GetVisibleClassIdsAsync(actorId, actorRole);
         var items = await _announcementRepository.GetVisibleAsync(classIds, query.Type);
+        await FillMissingSubjectsAsync(items);
         return items.Select(MapToDto).ToList();
     }
 
     public async Task<AnnouncementDto?> GetByIdAsync(int id)
     {
         var entity = await _announcementRepository.GetByIdAsync(id);
-        return entity == null ? null : MapToDto(entity);
+        if (entity == null) return null;
+        await FillMissingSubjectsAsync(new List<Announcement> { entity });
+        return MapToDto(entity);
     }
 
     public async Task<(CreateAnnouncementResultDto? Result, string? Error)> CreateAsync(
@@ -65,6 +68,7 @@ public class AnnouncementService : IAnnouncementService
             Content = dto.Content.Trim(),
             Type = dto.Type,
             TargetClassId = dto.Type == AnnouncementType.Class ? dto.TargetClassId : null,
+            SubjectId = dto.Type == AnnouncementType.Class ? dto.SubjectId : null,
             CreatedById = actorId,
             CreatedAt = DateTime.UtcNow
         };
@@ -73,10 +77,11 @@ public class AnnouncementService : IAnnouncementService
         var loaded = await _announcementRepository.GetByIdAsync(created.Id);
 
         var recipientIds = await ResolveRecipientIdsAsync(created);
+        var (notifTitle, notifMessage) = BuildNotifyCopy(loaded!);
         await _notificationService.NotifyUsersAsync(
             recipientIds,
-            $"Bảng tin: {created.Title}",
-            created.Content,
+            notifTitle,
+            notifMessage,
             dto.SendPush);
 
         return (new CreateAnnouncementResultDto
@@ -103,6 +108,7 @@ public class AnnouncementService : IAnnouncementService
         entity.Content = dto.Content.Trim();
         entity.Type = dto.Type;
         entity.TargetClassId = dto.Type == AnnouncementType.Class ? dto.TargetClassId : null;
+        entity.SubjectId = dto.Type == AnnouncementType.Class ? dto.SubjectId : null;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await _announcementRepository.UpdateAsync(entity);
@@ -145,14 +151,26 @@ public class AnnouncementService : IAnnouncementService
 
             if (actorRole == UserRole.Teacher)
             {
+                // GV gửi TB lớp bắt buộc gắn môn (để HS/PH thấy nhãn môn trên bảng tin).
+                if (!dto.SubjectId.HasValue || dto.SubjectId.Value <= 0)
+                    return "subjectId (môn học) là bắt buộc khi giáo viên gửi thông báo lớp.";
+
                 var assignments = await _teacherAssignmentRepository.GetByTeacherAsync(actorId);
                 if (!assignments.Any(ta => ta.ClassId == dto.TargetClassId.Value))
                     return "Bạn chưa được phân công dạy lớp này.";
+
+                if (!assignments.Any(ta =>
+                        ta.ClassId == dto.TargetClassId.Value && ta.SubjectId == dto.SubjectId.Value))
+                    return "Bạn chưa được phân công môn này tại lớp.";
             }
             else if (actorRole is not (UserRole.Admin))
             {
                 return "Không có quyền đăng bảng tin lớp.";
             }
+
+            if (dto.SubjectId.HasValue &&
+                !await _context.Subjects.AnyAsync(s => s.Id == dto.SubjectId.Value))
+                return "Không tìm thấy môn học.";
         }
         else
         {
@@ -254,6 +272,70 @@ public class AnnouncementService : IAnnouncementService
         return ids.ToList();
     }
 
+    /// <summary>
+    /// Tin lớp cũ thiếu SubjectId → suy ra môn từ phân công GV–lớp (có thì ghi luôn DB).
+    /// </summary>
+    private async Task FillMissingSubjectsAsync(List<Announcement> items)
+    {
+        var missing = items
+            .Where(a => a.Type == AnnouncementType.Class
+                        && a.SubjectId == null
+                        && a.TargetClassId != null)
+            .ToList();
+        if (missing.Count == 0) return;
+
+        var teacherIds = missing.Select(a => a.CreatedById).Distinct().ToList();
+        var classIds = missing.Select(a => a.TargetClassId!.Value).Distinct().ToList();
+
+        var assignments = await _context.TeacherAssignments
+            .AsNoTracking()
+            .Include(ta => ta.Subject)
+            .Where(ta => teacherIds.Contains(ta.TeacherId) && classIds.Contains(ta.ClassId))
+            .ToListAsync();
+
+        var dirty = false;
+        foreach (var a in missing)
+        {
+            var matches = assignments
+                .Where(ta => ta.TeacherId == a.CreatedById && ta.ClassId == a.TargetClassId)
+                .ToList();
+            if (matches.Count == 0) continue;
+
+            // Một GV dạy nhiều môn cùng lớp → lấy môn đầu (đã đủ để hiện nhãn).
+            var pick = matches[0];
+            a.SubjectId = pick.SubjectId;
+            a.Subject = pick.Subject;
+            dirty = true;
+        }
+
+        if (dirty)
+            await _context.SaveChangesAsync();
+    }
+
+    /// <summary>Tiêu đề/nội dung cho chuông cá nhân — gắn lớp · môn · GV.</summary>
+    private static (string Title, string Message) BuildNotifyCopy(Announcement a)
+    {
+        var className = a.TargetClass?.Name;
+        var subjectName = a.Subject?.Name;
+        var teacherName = a.CreatedBy?.FullName ?? "";
+
+        string title;
+        if (a.Type == AnnouncementType.Global)
+            title = $"Toàn trường: {a.Title}";
+        else if (!string.IsNullOrWhiteSpace(subjectName))
+            title = $"[{subjectName}] {a.Title}";
+        else
+            title = $"TB lớp {className ?? ""}: {a.Title}".Trim();
+
+        var meta = a.Type == AnnouncementType.Global
+            ? $"— Admin {teacherName}"
+            : $"— GV {teacherName}"
+              + (string.IsNullOrWhiteSpace(className) ? "" : $" · {className}")
+              + (string.IsNullOrWhiteSpace(subjectName) ? "" : $" · {subjectName}");
+
+        return (title, $"{a.Content}\n\n{meta}");
+    }
+
     internal static AnnouncementDto MapToDto(Announcement a) => new()
     {
         Id = a.Id,
@@ -262,6 +344,8 @@ public class AnnouncementService : IAnnouncementService
         Type = a.Type.ToString(),
         TargetClassId = a.TargetClassId,
         TargetClassName = a.TargetClass?.Name,
+        SubjectId = a.SubjectId,
+        SubjectName = a.Subject?.Name,
         CreatedById = a.CreatedById,
         CreatedByName = a.CreatedBy?.FullName ?? string.Empty,
         CreatedAt = a.CreatedAt,

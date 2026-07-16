@@ -203,6 +203,12 @@ public class AppDbContext : DbContext
             .HasForeignKey(a => a.TargetClassId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<Announcement>()
+            .HasOne(a => a.Subject)
+            .WithMany()
+            .HasForeignKey(a => a.SubjectId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         modelBuilder.Entity<Notification>()
             .HasOne(n => n.User)
             .WithMany()

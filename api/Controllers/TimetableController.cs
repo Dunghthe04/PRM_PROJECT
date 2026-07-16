@@ -41,21 +41,24 @@ public class TimetableController : ControllerBase
     }
 
     /// <summary>
-    /// GET /api/timetable/me?weekStart=&amp;studentId= — TKB cá nhân.
+    /// GET /api/timetable/me?weekStart=&amp;studentId=&amp;semesterId= — TKB cá nhân.
     /// - Học sinh: TKB của chính mình (bỏ qua studentId).
     /// - Phụ huynh: TKB của con được chọn (studentId); bỏ trống → con đầu tiên.
+    /// - semesterId: chỉ lấy lớp trong kỳ (khuyến nghị — HS có thể ghi danh nhiều kỳ).
     /// </summary>
     [HttpGet("me")]
     [Authorize(Roles = "Student,Parent")]
     public async Task<IActionResult> GetMy(
         [FromQuery] DateTime? weekStart = null,
-        [FromQuery] int? studentId = null)
+        [FromQuery] int? studentId = null,
+        [FromQuery] int? semesterId = null)
     {
         var userId = GetCurrentUserId();
         var role = GetCurrentUserRole();
         if (userId == null || role == null) return Unauthorized();
 
-        var (result, error) = await _service.GetMyAsync(userId.Value, role.Value, studentId, weekStart);
+        var (result, error) = await _service.GetMyAsync(
+            userId.Value, role.Value, studentId, weekStart, semesterId);
         if (error != null) return BadRequest(new { message = error });
         return Ok(result);
     }

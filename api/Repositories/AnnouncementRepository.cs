@@ -23,7 +23,8 @@ public class AnnouncementRepository : IAnnouncementRepository
     private IQueryable<Announcement> WithDetails()
         => _context.Announcements
             .Include(a => a.CreatedBy)
-            .Include(a => a.TargetClass);
+            .Include(a => a.TargetClass)
+            .Include(a => a.Subject);
 
     public async Task<Announcement?> GetByIdAsync(int id)
         => await WithDetails().FirstOrDefaultAsync(a => a.Id == id);
