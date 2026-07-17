@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart'; // Khởi tạo Firebase
 import 'package:firebase_messaging/firebase_messaging.dart'; // Push (FCM)
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart'; // Thư viện Material (widget, MaterialApp...)
 import 'package:go_router/go_router.dart'; // Package điều hướng trang (routing)
 import 'package:mobile_app/vn/edu/fpt/view/login_view.dart';
@@ -21,11 +22,12 @@ void main() async {
   // Bắt buộc gọi trước khi dùng plugin native trong main().
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Khởi tạo Firebase (đọc cấu hình từ google-services.json).
-  await Firebase.initializeApp();
-
-  // Đăng ký handler nhận push khi app ở nền/tắt.
-  FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+  // Web chưa cấu hình FirebaseOptions (chỉ có google-services.json cho Android).
+  // Bỏ qua FCM trên web để vẫn chạy Chrome khi máy ảo nặng.
+  if (!kIsWeb) {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+  }
 
   runApp(const MyApp()); // Khởi động app, vẽ widget MyApp lên màn hình
 }

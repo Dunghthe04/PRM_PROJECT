@@ -42,11 +42,14 @@ Hệ thống được chia thành 6 phân hệ nghiệp vụ chính:
     *   Có điểm mới, có bài tập mới/sắp đến hạn nộp.
     *   Đơn xin nghỉ học được duyệt/từ chối.
     *   Thông báo nhắc nợ học phí/xác nhận thanh toán thành công.
-    *   Thông báo từ Giáo viên lớp hoặc thông báo toàn trường từ Admin.
+    *   Thông báo từ Giáo viên lớp (chỉ vào chuông Đã nhận của PH/HS lớp đó — không lên Bảng tin công khai).
+    *   Thông báo toàn trường từ Admin (xuất hiện **cả** Bảng tin lẫn chuông Đã nhận).
+    *   Thông báo Admin gửi tới giáo viên (toàn bộ GV hoặc 1 GV) — chỉ hiện ở chuông Đã nhận của GV, không lên Bảng tin.
+    *   Giáo viên / Admin có thêm tab **Đã gửi** để xem lại lịch sử thông báo mình đã tạo.
 
 ### Phân hệ 2: Dành cho Phụ huynh / Học sinh (Mobile App)
 *   **FR2.1 - Chuyển đổi hồ sơ (Dành riêng cho Phụ huynh):** Cho phép thao tác chuyển đổi nhanh (Switch profile) để theo dõi thông tin của từng con em nếu có nhiều con học cùng trường.
-*   **FR2.2 - Dashboard & Bảng tin:** Hiển thị luồng tin tức, sự kiện của trường/lớp.
+*   **FR2.2 - Dashboard & Bảng tin:** Hiển thị luồng tin tức, sự kiện **toàn trường** (tin Admin Global). Tin theo lớp / tin Admin→GV chỉ xem ở Trung tâm Thông báo (FR1.4), không lẫn vào Bảng tin công khai.
 *   **FR2.3 - Quản lý Học tập:**
     *   Xem Thời khóa biểu theo tuần (chi tiết môn, phòng, giáo viên).
     *   Tra cứu bảng điểm tổng hợp và điểm chi tiết (các đầu điểm thành phần).
@@ -61,7 +64,7 @@ Hệ thống được chia thành 6 phân hệ nghiệp vụ chính:
 *   **FR3.1 - Điểm danh thông minh:** Hiển thị danh sách lớp. Cho phép thao tác điểm danh nhanh: Có mặt (P), Vắng mặt (A), Đi muộn (L). *(Online-only — không hỗ trợ offline/SQLite.)*
 *   **FR3.2 - (ĐÃ CHUYỂN SANG ADMIN):** ~~Nhập điểm số~~ không còn thuộc Giáo viên. Việc nhập/quản lý điểm số do Admin thực hiện (insert vào DB) — xem **FR5.6**. HS/PH vẫn xem điểm bình thường (FR2.3).
 *   **FR3.3 - Quản lý Đơn từ:** Nhận, xem xét đơn xin nghỉ của học sinh và thao tác Duyệt (Approve) / Từ chối (Reject). Hệ thống tự bắn thông báo kết quả cho HS/PH.
-*   **FR3.4 - Gửi Thông báo Lớp:** Soạn thảo văn bản, đính kèm tài liệu và gửi Push Notification (1 chiều) đến toàn bộ phụ huynh/học sinh thuộc lớp mình phụ trách.
+*   **FR3.4 - Gửi Thông báo Lớp:** Soạn thảo văn bản (gắn môn dạy) và gửi Push Notification (1 chiều) đến phụ huynh/học sinh thuộc lớp mình phụ trách. Tin này **chỉ** xuất hiện ở chuông Thông báo → Đã nhận của PH/HS; Giáo viên xem lại ở tab **Đã gửi**. Không đăng lên Bảng tin công khai.
 *   **FR3.5 - Quản lý Bài tập (Assignments):** Tạo mới, chỉnh sửa, xóa bài tập (set deadline, đính kèm đề bài). Theo dõi trạng thái nộp bài, chấm điểm và ghi chú (feedback) trực tiếp vào bài nộp.
 
 ### Phân hệ 4: Thanh toán & Tài chính (Backend/Web Admin)
@@ -72,7 +75,11 @@ Hệ thống được chia thành 6 phân hệ nghiệp vụ chính:
 *   **FR5.1 - Quản lý Người dùng (Admin):** Thêm, Sửa, Khóa/Mở tài khoản, Reset mật khẩu. *(~~Import Excel~~ — bỏ, không làm trên app.)*
 *   **FR5.2 - Quản lý Danh mục (Admin):** Quản lý Kỳ học, Môn học, Lớp học. *(Không có entity Khối riêng — có thể gắn khối trong tên lớp, vd 10A1.)*
 *   **FR5.3 - Phân công Giảng dạy + TKB:** Gán Giáo viên vào Lớp/Môn và dựng Thời khóa biểu — **thực hiện bằng insert DB / seeder** (không dựng màn Admin trên app). HS/PH vẫn xem TKB (FR2.3).
-*   **FR5.4 - Bảng tin Toàn trường (Global Newsfeed):** Đăng tải thông báo quan trọng (Lịch nghỉ lễ, sự kiện) đến toàn bộ thiết bị App.
+*   **FR5.4 - Thông báo / Bảng tin Admin:** Admin soạn và gửi theo 3 đối tượng:
+    *   **Toàn trường (Global):** hiện trên Bảng tin công khai + chuông Đã nhận mọi role (kèm Push).
+    *   **Toàn bộ giáo viên:** chỉ chuông Đã nhận của GV + Push — không lên Bảng tin.
+    *   **Một giáo viên cụ thể:** chỉ chuông Đã nhận của GV đó + Push — không lên Bảng tin.
+    *   Tab **Đã gửi** để Admin xem lại lịch sử tin đã phát hành.
 *   **FR5.5 - Báo cáo & Thống kê:** Xem trên màn hình các báo cáo tổng hợp: Bảng điểm toàn trường/lớp, Tỷ lệ chuyên cần, Tình trạng đóng học phí. *(Không xuất Excel/PDF trên app — không phù hợp thao tác điện thoại.)*
 *   **FR5.6 - Quản lý Điểm số:** Nhập/công bố điểm — **thực hiện bằng insert DB / seeder** (không dựng màn trên app). HS/PH vẫn xem điểm (FR2.3).
 

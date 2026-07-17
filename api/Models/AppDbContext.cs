@@ -272,6 +272,13 @@ public class AppDbContext : DbContext
             .HasForeignKey(a => a.SubjectId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Admin gửi cho 1 GV — Restrict để không xóa user kéo theo lịch sử TB.
+        modelBuilder.Entity<Announcement>()
+            .HasOne(a => a.TargetUser)
+            .WithMany()
+            .HasForeignKey(a => a.TargetUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         modelBuilder.Entity<Notification>()
             .HasOne(n => n.User)
             .WithMany()

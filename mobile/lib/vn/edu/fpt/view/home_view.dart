@@ -198,7 +198,10 @@ List<_TabItem> _buildTabs(
       id: 'notifications',
       icon: Icons.notifications,
       label: 'Thông báo',
-      body: NotificationTab(onUnreadChanged: onUnreadChanged));
+      body: NotificationTab(
+        onUnreadChanged: onUnreadChanged,
+        showSentHistory: user.role == 'Teacher',
+      ));
   final profile = _TabItem(
       id: 'profile',
       icon: Icons.person,
@@ -210,6 +213,13 @@ List<_TabItem> _buildTabs(
       return [
         home,
         _TabItem(id: 'class', icon: Icons.calendar_month, label: 'Lịch dạy', body: TeacherClassTab(user: user)),
+        // Bảng tin GV: chỉ tin toàn trường từ Admin.
+        _TabItem(
+          id: 'announcements',
+          icon: Icons.article,
+          label: 'Bảng tin',
+          body: const AnnouncementTab(typeFilter: 'Global'),
+        ),
         noti,
         profile,
       ];
@@ -224,7 +234,14 @@ List<_TabItem> _buildTabs(
       return [
         home,
         _TabItem(id: 'study', icon: Icons.school, label: 'Học tập', body: StudyTab(user: user)),
-        _TabItem(id: 'announcements', icon: Icons.article, label: 'Bảng tin', body: const AnnouncementTab()),
+        // Bảng tin HS/PH: chỉ tin toàn trường (nhà trường).
+        // Tin GV gửi lớp → chuông Thông báo (Đã nhận).
+        _TabItem(
+          id: 'announcements',
+          icon: Icons.article,
+          label: 'Bảng tin',
+          body: const AnnouncementTab(typeFilter: 'Global'),
+        ),
         noti,
         profile,
       ];

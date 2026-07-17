@@ -296,6 +296,9 @@ public static class DbSeeder
         await db.SaveChangesAsync();
 
         // ─── 9) Announcements ──────────────────────────────────────────────
+        // Global → Bảng tin nhà trường (mọi role).
+        // Class → chỉ lịch sử Đã gửi của GV; HS/PH nhận qua chuông (không lên Bảng tin).
+        // Teachers/Teacher → chỉ chuông Đã nhận của GV.
         db.Announcements.AddRange(
             new Announcement
             {
@@ -315,13 +318,30 @@ public static class DbSeeder
             },
             new Announcement
             {
-                Title = "10A1 — Nhắc kiểm tra Toán",
+                Title = "Nhắc kiểm tra Toán",
                 Content = "Tuần sau kiểm tra 1 tiết chương Hàm số. Ôn kỹ SGK.",
                 Type = AnnouncementType.Class,
                 TargetClassId = currentClass.Id,
                 SubjectId = math.Id,
                 CreatedById = teacher.Id,
                 CreatedAt = DateTime.UtcNow.AddDays(-1),
+            },
+            new Announcement
+            {
+                Title = "Họp chuyên môn cuối tuần",
+                Content = "Thứ Bảy 9h00 họp tổ chuyên môn tại phòng họp B. Vui lòng có mặt đúng giờ.",
+                Type = AnnouncementType.Teachers,
+                CreatedById = admin.Id,
+                CreatedAt = DateTime.UtcNow.AddHours(-6),
+            },
+            new Announcement
+            {
+                Title = "Nhắc nộp điểm giữa kỳ",
+                Content = "Vui lòng hoàn tất nhập điểm giữa kỳ trước thứ Sáu tuần này.",
+                Type = AnnouncementType.Teacher,
+                TargetUserId = teacher.Id,
+                CreatedById = admin.Id,
+                CreatedAt = DateTime.UtcNow.AddHours(-5),
             });
         await db.SaveChangesAsync();
 
@@ -351,13 +371,38 @@ public static class DbSeeder
                 IsRead = true,
                 CreatedAt = DateTime.UtcNow.AddDays(-1),
             },
+            // Tin GV gửi lớp → chuông PH/HS (không hiện Bảng tin).
+            new Notification
+            {
+                UserId = parent.Id,
+                Title = "[Toán] Nhắc kiểm tra Toán",
+                Message = "Tuần sau kiểm tra 1 tiết chương Hàm số. Ôn kỹ SGK.\n\n— GV Nguyễn Văn A (GV) · 10A1 · Toán",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+            },
             new Notification
             {
                 UserId = studentAn.Id,
-                Title = "Thông báo lớp",
-                Message = "Tuần sau kiểm tra 1 tiết môn Toán.",
+                Title = "[Toán] Nhắc kiểm tra Toán",
+                Message = "Tuần sau kiểm tra 1 tiết chương Hàm số. Ôn kỹ SGK.\n\n— GV Nguyễn Văn A (GV) · 10A1 · Toán",
                 IsRead = false,
-                CreatedAt = DateTime.UtcNow.AddHours(-2),
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+            },
+            new Notification
+            {
+                UserId = studentBinh.Id,
+                Title = "[Toán] Nhắc kiểm tra Toán",
+                Message = "Tuần sau kiểm tra 1 tiết chương Hàm số. Ôn kỹ SGK.\n\n— GV Nguyễn Văn A (GV) · 10A1 · Toán",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+            },
+            new Notification
+            {
+                UserId = studentCuong.Id,
+                Title = "[Toán] Nhắc kiểm tra Toán",
+                Message = "Tuần sau kiểm tra 1 tiết chương Hàm số. Ôn kỹ SGK.\n\n— GV Nguyễn Văn A (GV) · 10A1 · Toán",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
             },
             new Notification
             {
@@ -366,6 +411,30 @@ public static class DbSeeder
                 Message = "Có đơn xin nghỉ mới cần duyệt (Nguyễn Văn An).",
                 IsRead = false,
                 CreatedAt = DateTime.UtcNow.AddHours(-4),
+            },
+            new Notification
+            {
+                UserId = teacher.Id,
+                Title = "[Admin → Giáo viên] Họp chuyên môn cuối tuần",
+                Message = "Thứ Bảy 9h00 họp tổ chuyên môn tại phòng họp B. Vui lòng có mặt đúng giờ.\n\n— Admin Trường · Gửi toàn bộ giáo viên",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow.AddHours(-6),
+            },
+            new Notification
+            {
+                UserId = teacher2.Id,
+                Title = "[Admin → Giáo viên] Họp chuyên môn cuối tuần",
+                Message = "Thứ Bảy 9h00 họp tổ chuyên môn tại phòng họp B. Vui lòng có mặt đúng giờ.\n\n— Admin Trường · Gửi toàn bộ giáo viên",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow.AddHours(-6),
+            },
+            new Notification
+            {
+                UserId = teacher.Id,
+                Title = "[Admin] Nhắc nộp điểm giữa kỳ",
+                Message = "Vui lòng hoàn tất nhập điểm giữa kỳ trước thứ Sáu tuần này.\n\n— Admin Trường · Tới Nguyễn Văn A (GV)",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow.AddHours(-5),
             });
         await db.SaveChangesAsync();
 

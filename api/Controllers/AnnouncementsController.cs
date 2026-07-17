@@ -29,6 +29,18 @@ public class AnnouncementsController : ControllerBase
         return Ok(items);
     }
 
+    /// <summary>GET /api/announcements/mine — lịch sử TB do chính user tạo (GV Đã gửi).</summary>
+    [HttpGet("mine")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public async Task<IActionResult> GetMine()
+    {
+        var actorId = GetCurrentUserId();
+        if (actorId == null) return Unauthorized();
+
+        var items = await _service.GetMineAsync(actorId.Value);
+        return Ok(items);
+    }
+
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {

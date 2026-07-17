@@ -54,7 +54,6 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 
 ### ✅ NGÀY 5 — Quản lý người dùng (FR5.1) · *Admin*
 - [x] CRUD user, Khóa/Mở tài khoản, Reset mật khẩu (API)
-- [x] ~~Import Excel~~ → **BỎ khỏi UI app** (API có sẵn nhưng không dựng màn)
 
 ### ✅ NGÀY 6 — Điểm số (FR5.6, FR2.3) · *insert DB / HS / PH xem*
 - [x] API nhập điểm hàng loạt theo AssessmentType, cơ chế **Nháp → Publish** (dùng qua Swagger/DB; **không làm UI app**)
@@ -62,7 +61,6 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 
 ### ✅ NGÀY 7 — Điểm danh (FR3.1) · *GV / HS / PH*
 - [x] API điểm danh P/A/L theo lớp + ngày; API tra cứu chuyên cần
-- [x] ~~Offline SQLite~~ → **BỎ** (điểm danh online-only — không làm trên điện thoại lúc mất mạng)
 
 ### ✅ NGÀY 8 — Bài tập (FR3.5, FR2.4) · *GV / HS*
 - [x] CRUD Assignment (deadline, đề bài) + Submission + chấm điểm/feedback
@@ -83,7 +81,6 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 
 ### ✅ NGÀY 12 — Báo cáo & Thống kê (FR5.5) · *Admin*
 - [x] API tổng hợp JSON: dashboard, bảng điểm, tỷ lệ chuyên cần, tình trạng học phí
-- [x] ~~Xuất Excel/PDF~~ → **BỎ khỏi phạm vi app** (không làm trên điện thoại; báo cáo xem trên màn hình là đủ)
 
 ---
 
@@ -114,13 +111,11 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 ### ✅ NGÀY 17 — Giáo viên: Điểm danh (FR3.1)
 - [x] Điểm danh nhanh P/A/L theo lớp + ngày (FR3.1, **online-only**)
 - [x] Tab "Lớp học" cho GV: chọn lớp → Điểm danh
-- [x] ~~Nhập điểm của GV~~ → **BỎ** (điểm do Admin insert DB — FR5.6; HS/PH vẫn xem được)
-- [x] ~~Offline SQLite~~ → **BỎ** (không làm)
 
 ### ✅ NGÀY 18 — Giáo viên: Bài tập, Duyệt đơn, Gửi TB (FR3.5, FR3.3, FR3.4)
 - [x] Tạo/sửa/xóa & chấm bài tập (FR3.5)
 - [x] Duyệt/từ chối đơn nghỉ (FR3.3)
-- [x] Soạn & gửi Push Notification cho lớp (FR3.4)
+- [x] Soạn & gửi Push Notification cho lớp (FR3.4) — tin vào chuông PH/HS; GV xem lại ở tab Đã gửi
 
 ---
 
@@ -130,16 +125,20 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 ### ✅ NGÀY 19 — Quản lý người dùng & Danh mục (FR5.1, FR5.2)
 - [x] Layout admin (sidebar khi rộng, Drawer khi hẹp) — `AdminShell`
 - [x] Màn Quản lý người dùng (FR5.1): thêm / sửa / khóa-mở / reset mật khẩu
-- [x] ~~Import Excel tài khoản~~ → **BỎ** (không làm trên app)
 - [x] Màn danh mục: Kỳ · Môn · Lớp (FR5.2) — không có entity Khối riêng (gắn trong tên lớp)
-- [x] ~~Nhập điểm (FR5.6)~~ → **BỎ UI** — insert DB / seeder
-- [x] ~~Phân công GV (FR5.3) + dựng TKB~~ → **BỎ UI** — insert DB / seeder
 
 ### ✅ NGÀY 20 — Tài chính, Bảng tin, Báo cáo (FR4.1, FR4.2, FR5.4, FR5.5)
 - [x] Màn Khoản thu / hóa đơn (batch theo lớp) + cấu hình VNPay/PayOS + lịch sử GD (FR4.1, FR4.2)
 - [x] Đăng thông báo toàn trường (FR5.4)
 - [x] Dashboard báo cáo **xem trên màn** (JSON): tổng quan + điểm / chuyên cần / học phí (FR5.5)
-- [x] ~~Xuất Excel/PDF~~ → **BỎ** (không phù hợp app điện thoại)
+
+### ✅ Bổ sung sau Ngày 20 — Làm rõ luồng Thông báo / Bảng tin (FR1.4, FR3.4, FR5.4)
+- [x] **Bảng tin công khai** chỉ còn tin **Toàn trường (Global)**; tin lớp & tin Admin→GV không lẫn feed
+- [x] Admin gửi theo 3 đối tượng: Toàn trường / Toàn bộ GV / Một GV (`AnnouncementType`: Global, Teachers, Teacher)
+- [x] GV + Admin có tab **Đã gửi** (`GET /api/announcements/mine`) xem lịch sử tin đã tạo
+- [x] Người tạo không tự nhận lại tin của mình ở chuông Đã nhận
+- [x] Mặc định luôn gửi Push (bỏ toggle trên form); snackbar thành công chỉ hiện «Đã gửi.»
+- [x] Flutter Web: bỏ qua Firebase khi `kIsWeb`; `apiBaseUrl` tự chọn localhost (web) / `10.0.2.2` (emulator)
 
 ---
 

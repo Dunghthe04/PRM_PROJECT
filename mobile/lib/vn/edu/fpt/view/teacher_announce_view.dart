@@ -4,7 +4,7 @@ import '../controller/announcement_controller.dart';
 import '../model/teacher_class_model.dart';
 
 /// Màn GV soạn & gửi thông báo / push cho 1 lớp (FR3.4).
-/// Gọi POST /announcements với type=Class + targetClassId + sendPush.
+/// Gọi POST /announcements với type=Class + targetClassId (luôn gửi push).
 class TeacherAnnouncePage extends StatefulWidget {
   final TeacherClassModel teacherClass;
   const TeacherAnnouncePage({super.key, required this.teacherClass});
@@ -18,7 +18,6 @@ class _TeacherAnnouncePageState extends State<TeacherAnnouncePage> {
   final _controller = AnnouncementController();
   final _title = TextEditingController();
   final _content = TextEditingController();
-  bool _sendPush = true;
   bool _saving = false;
 
   @override
@@ -37,7 +36,7 @@ class _TeacherAnnouncePageState extends State<TeacherAnnouncePage> {
       type: 'Class',
       targetClassId: widget.teacherClass.classId,
       subjectId: widget.teacherClass.subjectId,
-      sendPush: _sendPush,
+      sendPush: true,
     );
     if (!mounted) return;
     setState(() => _saving = false);
@@ -46,13 +45,7 @@ class _TeacherAnnouncePageState extends State<TeacherAnnouncePage> {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _sendPush
-              ? 'Đã gửi thông báo + push tới $count người.'
-              : 'Đã đăng bảng tin lớp (không gửi push).',
-        ),
-      ),
+      const SnackBar(content: Text('Đã gửi.')),
     );
     Navigator.pop(context, true);
   }
@@ -107,15 +100,6 @@ class _TeacherAnnouncePageState extends State<TeacherAnnouncePage> {
               ),
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Nhập nội dung' : null,
-            ),
-            const SizedBox(height: 8),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Gửi Push Notification'),
-              subtitle: const Text('HS/PH trong lớp nhận thông báo đẩy'),
-              value: _sendPush,
-              activeThumbColor: AppColors.primary,
-              onChanged: (v) => setState(() => _sendPush = v),
             ),
             const SizedBox(height: 24),
             SizedBox(

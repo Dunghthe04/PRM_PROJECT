@@ -36,14 +36,31 @@ class AnnouncementController {
     }
   }
 
+  /// Lịch sử bảng tin do chính user tạo (GET /announcements/mine) — tab Đã gửi của GV.
+  Future<(List<AnnouncementModel>?, String?)> getMine() async {
+    try {
+      final response = await _apiClient.dio.get('/announcements/mine');
+      if (response.statusCode == 200) {
+        final list = (response.data as List)
+            .map((e) => AnnouncementModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+        return (list, null);
+      }
+      return (null, 'Không tải được lịch sử đã gửi (mã ${response.statusCode}).');
+    } on DioException catch (e) {
+      return (null, 'Lỗi kết nối: ${e.message}');
+    }
+  }
+
   // ─── Phần dành cho GIÁO VIÊN / ADMIN (FR3.4, FR5.4) ────────────────────────
 
   /// Soạn & gửi thông báo (kèm push) — POST /announcements.
   ///
   /// Nhận:
   ///   - [title], [content]: nội dung thông báo.
-  ///   - [type]: "Class" (theo lớp) | "Global" (toàn trường — chỉ Admin).
-  ///   - [targetClassId]: bắt buộc khi type = "Class".
+  ///   - [type]: Global | Class | Teachers | Teacher.
+  ///   - [targetClassId]: bắt buộc khi type = Class.
+  ///   - [targetUserId]: bắt buộc khi type = Teacher.
   ///   - [sendPush]: có gửi push notification không (mặc định true).
   /// Trả về `(int?, String?)`: (số người được thông báo, null) hoặc (null, lỗi).
   Future<(int?, String?)> create({
@@ -52,6 +69,7 @@ class AnnouncementController {
     required String type,
     int? targetClassId,
     int? subjectId,
+    int? targetUserId,
     bool sendPush = true,
   }) async {
     try {
@@ -61,6 +79,7 @@ class AnnouncementController {
         'type': type,
         'targetClassId': targetClassId,
         if (subjectId != null) 'subjectId': subjectId,
+        if (targetUserId != null) 'targetUserId': targetUserId,
         'sendPush': sendPush,
       });
       if (response.statusCode == 200 || response.statusCode == 201) {

@@ -14,6 +14,9 @@ public class AnnouncementDto
     public string? TargetClassName { get; set; }
     public int? SubjectId { get; set; }
     public string? SubjectName { get; set; }
+    /// <summary>GV nhận khi Type = Teacher.</summary>
+    public int? TargetUserId { get; set; }
+    public string? TargetUserName { get; set; }
     public int CreatedById { get; set; }
     public string CreatedByName { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
@@ -22,7 +25,7 @@ public class AnnouncementDto
 
 public class AnnouncementListQueryDto
 {
-    /// <summary>Lọc Global hoặc Class (tuỳ chọn).</summary>
+    /// <summary>Lọc theo loại (tuỳ chọn).</summary>
     public AnnouncementType? Type { get; set; }
 }
 
@@ -37,6 +40,9 @@ public class CreateUpdateAnnouncementDto
 
     /// <summary>Môn học (khuyến nghị khi GV gửi TB lớp).</summary>
     public int? SubjectId { get; set; }
+
+    /// <summary>Bắt buộc khi Type = Teacher — id giáo viên nhận.</summary>
+    public int? TargetUserId { get; set; }
 
     /// <summary>Gửi push notification khi đăng (mặc định true).</summary>
     public bool SendPush { get; set; } = true;

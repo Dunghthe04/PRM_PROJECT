@@ -10,6 +10,8 @@ public interface IAnnouncementService
 {
     Task<List<AnnouncementDto>> GetListAsync(int actorId, UserRole actorRole, AnnouncementListQueryDto query);
     Task<AnnouncementDto?> GetByIdAsync(int id);
+    /// <summary>Lịch sử bảng tin do chính actor tạo (tab Đã gửi của GV).</summary>
+    Task<List<AnnouncementDto>> GetMineAsync(int actorId);
     Task<(CreateAnnouncementResultDto? Result, string? Error)> CreateAsync(
         CreateUpdateAnnouncementDto dto, int actorId, UserRole actorRole);
     Task<(AnnouncementDto? Result, string? Error)> UpdateAsync(
@@ -56,6 +58,13 @@ public class AnnouncementService : IAnnouncementService
         return MapToDto(entity);
     }
 
+    public async Task<List<AnnouncementDto>> GetMineAsync(int actorId)
+    {
+        var items = await _announcementRepository.GetByCreatorAsync(actorId);
+        await FillMissingSubjectsAsync(items);
+        return items.Select(MapToDto).ToList();
+    }
+
     public async Task<(CreateAnnouncementResultDto? Result, string? Error)> CreateAsync(
         CreateUpdateAnnouncementDto dto, int actorId, UserRole actorRole)
     {
@@ -69,6 +78,7 @@ public class AnnouncementService : IAnnouncementService
             Type = dto.Type,
             TargetClassId = dto.Type == AnnouncementType.Class ? dto.TargetClassId : null,
             SubjectId = dto.Type == AnnouncementType.Class ? dto.SubjectId : null,
+            TargetUserId = dto.Type == AnnouncementType.Teacher ? dto.TargetUserId : null,
             CreatedById = actorId,
             CreatedAt = DateTime.UtcNow
         };
@@ -84,11 +94,19 @@ public class AnnouncementService : IAnnouncementService
             notifMessage,
             dto.SendPush);
 
+        var scopeMsg = dto.Type switch
+        {
+            AnnouncementType.Teachers => "giáo viên",
+            AnnouncementType.Teacher => "giáo viên được chọn",
+            AnnouncementType.Global => "toàn trường",
+            _ => "người dùng"
+        };
+
         return (new CreateAnnouncementResultDto
         {
             Announcement = MapToDto(loaded!),
             NotifiedUserCount = recipientIds.Count,
-            Message = $"Đã đăng bảng tin và gửi thông báo cho {recipientIds.Count} người dùng."
+            Message = $"Đã gửi thông báo tới {recipientIds.Count} {scopeMsg}."
         }, null);
     }
 
@@ -109,6 +127,7 @@ public class AnnouncementService : IAnnouncementService
         entity.Type = dto.Type;
         entity.TargetClassId = dto.Type == AnnouncementType.Class ? dto.TargetClassId : null;
         entity.SubjectId = dto.Type == AnnouncementType.Class ? dto.SubjectId : null;
+        entity.TargetUserId = dto.Type == AnnouncementType.Teacher ? dto.TargetUserId : null;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await _announcementRepository.UpdateAsync(entity);
@@ -140,6 +159,28 @@ public class AnnouncementService : IAnnouncementService
         {
             if (actorRole != UserRole.Admin)
                 return "Chỉ Admin được đăng bảng tin toàn trường.";
+        }
+        else if (dto.Type == AnnouncementType.Teachers)
+        {
+            if (actorRole != UserRole.Admin)
+                return "Chỉ Admin được gửi thông báo tới toàn bộ giáo viên.";
+        }
+        else if (dto.Type == AnnouncementType.Teacher)
+        {
+            if (actorRole != UserRole.Admin)
+                return "Chỉ Admin được gửi thông báo tới một giáo viên.";
+            if (!dto.TargetUserId.HasValue || dto.TargetUserId.Value <= 0)
+                return "targetUserId (giáo viên nhận) là bắt buộc.";
+
+            var teacher = await _context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == dto.TargetUserId.Value);
+            if (teacher == null)
+                return "Không tìm thấy giáo viên.";
+            if (teacher.Role != UserRole.Teacher)
+                return "Người nhận phải là giáo viên.";
+            if (teacher.IsLocked)
+                return "Tài khoản giáo viên đang bị khóa.";
         }
         else if (dto.Type == AnnouncementType.Class)
         {
@@ -240,6 +281,28 @@ public class AnnouncementService : IAnnouncementService
                 .Select(u => u.Id)
                 .ToListAsync();
             foreach (var id in allActive) ids.Add(id);
+            // Người tạo không tự nhận lại thông báo của chính mình.
+            ids.Remove(announcement.CreatedById);
+            return ids.ToList();
+        }
+
+        // Admin → toàn bộ / 1 giáo viên: chỉ chuông Đã nhận, không lên Bảng tin.
+        if (announcement.Type == AnnouncementType.Teachers)
+        {
+            var allTeacherIds = await _context.Users
+                .Where(u => u.Role == UserRole.Teacher && !u.IsLocked)
+                .Select(u => u.Id)
+                .ToListAsync();
+            foreach (var id in allTeacherIds) ids.Add(id);
+            ids.Remove(announcement.CreatedById);
+            return ids.ToList();
+        }
+
+        if (announcement.Type == AnnouncementType.Teacher)
+        {
+            if (announcement.TargetUserId.HasValue)
+                ids.Add(announcement.TargetUserId.Value);
+            ids.Remove(announcement.CreatedById);
             return ids.ToList();
         }
 
@@ -268,6 +331,10 @@ public class AnnouncementService : IAnnouncementService
             .ToListAsync();
 
         foreach (var tid in teacherIds) ids.Add(tid);
+
+        // Người tạo TB không tự nhận lại thông báo của chính mình (tránh rối chuông).
+        // GV vẫn xem lại TB đã gửi ở Bảng tin (lọc theo lớp mình dạy).
+        ids.Remove(announcement.CreatedById);
 
         return ids.ToList();
     }
@@ -312,26 +379,36 @@ public class AnnouncementService : IAnnouncementService
             await _context.SaveChangesAsync();
     }
 
-    /// <summary>Tiêu đề/nội dung cho chuông cá nhân — gắn lớp · môn · GV.</summary>
+    /// <summary>Tiêu đề/nội dung cho chuông cá nhân.</summary>
     private static (string Title, string Message) BuildNotifyCopy(Announcement a)
     {
         var className = a.TargetClass?.Name;
         var subjectName = a.Subject?.Name;
         var teacherName = a.CreatedBy?.FullName ?? "";
+        var targetTeacher = a.TargetUser?.FullName ?? "";
 
         string title;
         if (a.Type == AnnouncementType.Global)
             title = $"Toàn trường: {a.Title}";
+        else if (a.Type == AnnouncementType.Teachers)
+            title = $"[Admin → Giáo viên] {a.Title}";
+        else if (a.Type == AnnouncementType.Teacher)
+            title = $"[Admin] {a.Title}";
         else if (!string.IsNullOrWhiteSpace(subjectName))
             title = $"[{subjectName}] {a.Title}";
         else
             title = $"TB lớp {className ?? ""}: {a.Title}".Trim();
 
-        var meta = a.Type == AnnouncementType.Global
-            ? $"— Admin {teacherName}"
-            : $"— GV {teacherName}"
-              + (string.IsNullOrWhiteSpace(className) ? "" : $" · {className}")
-              + (string.IsNullOrWhiteSpace(subjectName) ? "" : $" · {subjectName}");
+        var meta = a.Type switch
+        {
+            AnnouncementType.Global => $"— Admin {teacherName}",
+            AnnouncementType.Teachers => $"— Admin {teacherName} · Gửi toàn bộ giáo viên",
+            AnnouncementType.Teacher => $"— Admin {teacherName}"
+                + (string.IsNullOrWhiteSpace(targetTeacher) ? "" : $" · Tới {targetTeacher}"),
+            _ => $"— GV {teacherName}"
+                 + (string.IsNullOrWhiteSpace(className) ? "" : $" · {className}")
+                 + (string.IsNullOrWhiteSpace(subjectName) ? "" : $" · {subjectName}")
+        };
 
         return (title, $"{a.Content}\n\n{meta}");
     }
@@ -346,6 +423,8 @@ public class AnnouncementService : IAnnouncementService
         TargetClassName = a.TargetClass?.Name,
         SubjectId = a.SubjectId,
         SubjectName = a.Subject?.Name,
+        TargetUserId = a.TargetUserId,
+        TargetUserName = a.TargetUser?.FullName,
         CreatedById = a.CreatedById,
         CreatedByName = a.CreatedBy?.FullName ?? string.Empty,
         CreatedAt = a.CreatedAt,

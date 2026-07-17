@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'api_client.dart';
@@ -14,7 +15,8 @@ class PushService {
   static final PushService instance = PushService._();
 
   final ApiClient _apiClient = ApiClient();
-  final FirebaseMessaging _fm = FirebaseMessaging.instance;
+  // Chỉ tạo FirebaseMessaging trên mobile — web chưa cấu hình FCM.
+  FirebaseMessaging? get _fm => kIsWeb ? null : FirebaseMessaging.instance;
 
   /// Khởi tạo SAU KHI đăng nhập thành công.
   ///
@@ -23,17 +25,21 @@ class PushService {
   /// Việc làm: xin quyền hiện thông báo → lấy FCM token của thiết bị →
   /// gửi token lên server (để server bắn push đúng máy) → lắng nghe message.
   Future<void> init() async {
+    // Web: bỏ qua FCM (chưa có FirebaseOptions). Push vẫn test trên Android.
+    if (kIsWeb || _fm == null) return;
+
+    final fm = _fm!;
     // Android 13+ / iOS cần xin quyền hiển thị thông báo.
-    await _fm.requestPermission();
+    await fm.requestPermission();
 
     // Mỗi thiết bị có 1 token định danh để FCM gửi tới đúng máy.
-    final token = await _fm.getToken();
+    final token = await fm.getToken();
     // In token ra console (chỉ debug) để test gửi thử từ Firebase Console.
     debugPrint('[FCM TOKEN] $token');
     if (token != null) await _registerToken(token);
 
     // Token có thể bị làm mới → đăng ký lại token mới.
-    _fm.onTokenRefresh.listen(_registerToken);
+    fm.onTokenRefresh.listen(_registerToken);
 
     // App đang MỞ (foreground): FCM không tự hiện notification,
     // nên ta chủ động hiện SnackBar cho user thấy.
@@ -66,8 +72,9 @@ class PushService {
   ///
   /// Nhận: không tham số. Trả về: `Future<void>`.
   Future<void> unregister() async {
+    if (kIsWeb || _fm == null) return;
     try {
-      final token = await _fm.getToken();
+      final token = await _fm!.getToken();
       if (token != null) {
         // token có ký tự đặc biệt → encode trước khi đưa vào URL.
         await _apiClient.dio.delete('/devices/${Uri.encodeComponent(token)}');

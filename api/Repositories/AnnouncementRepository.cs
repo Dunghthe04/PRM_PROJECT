@@ -9,6 +9,8 @@ public interface IAnnouncementRepository
 {
     Task<Announcement?> GetByIdAsync(int id);
     Task<List<Announcement>> GetVisibleAsync(IReadOnlyList<int> classIds, AnnouncementType? type);
+    /// <summary>Lịch sử bảng tin do user tạo (GV xem TB đã gửi).</summary>
+    Task<List<Announcement>> GetByCreatorAsync(int createdById);
     Task<Announcement> CreateAsync(Announcement entity);
     Task UpdateAsync(Announcement entity);
     Task DeleteAsync(Announcement entity);
@@ -24,19 +26,17 @@ public class AnnouncementRepository : IAnnouncementRepository
         => _context.Announcements
             .Include(a => a.CreatedBy)
             .Include(a => a.TargetClass)
-            .Include(a => a.Subject);
+            .Include(a => a.Subject)
+            .Include(a => a.TargetUser);
 
     public async Task<Announcement?> GetByIdAsync(int id)
         => await WithDetails().FirstOrDefaultAsync(a => a.Id == id);
 
     public async Task<List<Announcement>> GetVisibleAsync(IReadOnlyList<int> classIds, AnnouncementType? type)
     {
-        var q = WithDetails().AsQueryable();
-
-        // Global + bảng tin lớp user thuộc về
-        q = q.Where(a =>
-            a.Type == AnnouncementType.Global
-            || (a.Type == AnnouncementType.Class && a.TargetClassId != null && classIds.Contains(a.TargetClassId.Value)));
+        // Bảng tin công khai: chỉ tin toàn trường (nhà trường).
+        // Class / Teachers / Teacher không lên feed — xem ở chuông hoặc GET /announcements/mine.
+        var q = WithDetails().Where(a => a.Type == AnnouncementType.Global);
 
         if (type.HasValue)
             q = q.Where(a => a.Type == type.Value);
@@ -45,6 +45,12 @@ public class AnnouncementRepository : IAnnouncementRepository
             .OrderByDescending(a => a.CreatedAt)
             .ToListAsync();
     }
+
+    public async Task<List<Announcement>> GetByCreatorAsync(int createdById)
+        => await WithDetails()
+            .Where(a => a.CreatedById == createdById)
+            .OrderByDescending(a => a.CreatedAt)
+            .ToListAsync();
 
     public async Task<Announcement> CreateAsync(Announcement entity)
     {

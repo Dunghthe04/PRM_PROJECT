@@ -11,7 +11,7 @@ class AnnouncementModel {
   /// Nội dung.
   final String content;
 
-  /// `Global` (toàn trường) | `Class` (theo lớp).
+  /// `Global` | `Class` | `Teachers` | `Teacher`.
   final String type;
 
   /// FK → lớp nhận tin — bắt buộc khi type = Class.
@@ -25,6 +25,12 @@ class AnnouncementModel {
 
   /// Tên môn liên quan.
   final String? subjectName;
+
+  /// FK → GV nhận khi type = Teacher.
+  final int? targetUserId;
+
+  /// Tên GV nhận.
+  final String? targetUserName;
 
   /// Tên người đăng.
   final String createdByName;
@@ -41,6 +47,8 @@ class AnnouncementModel {
     this.targetClassName,
     this.subjectId,
     this.subjectName,
+    this.targetUserId,
+    this.targetUserName,
     required this.createdByName,
     required this.createdAt,
   });
@@ -59,6 +67,8 @@ class AnnouncementModel {
       targetClassName: json['targetClassName'] as String?,
       subjectId: json['subjectId'] as int?,
       subjectName: json['subjectName'] as String?,
+      targetUserId: json['targetUserId'] as int?,
+      targetUserName: json['targetUserName'] as String?,
       createdByName: json['createdByName'] as String? ?? '',
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
           DateTime.now(),

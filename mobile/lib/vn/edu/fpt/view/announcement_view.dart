@@ -5,8 +5,10 @@ import '../controller/announcement_controller.dart';
 import '../model/announcement_model.dart';
 
 /// Tab Bảng tin (FR2.2): danh sách + bấm xem chi tiết đầy đủ.
+/// [typeFilter]: null = tất cả; 'Global' = chỉ tin toàn trường (dùng cho GV).
 class AnnouncementTab extends StatefulWidget {
-  const AnnouncementTab({super.key});
+  final String? typeFilter;
+  const AnnouncementTab({super.key, this.typeFilter});
 
   @override
   State<AnnouncementTab> createState() => _AnnouncementTabState();
@@ -19,11 +21,11 @@ class _AnnouncementTabState extends State<AnnouncementTab> {
   @override
   void initState() {
     super.initState();
-    _future = _controller.getList();
+    _future = _controller.getList(type: widget.typeFilter);
   }
 
   Future<void> _reload() async {
-    setState(() => _future = _controller.getList());
+    setState(() => _future = _controller.getList(type: widget.typeFilter));
     await _future;
   }
 
@@ -215,12 +217,22 @@ class AnnouncementDetailView extends StatelessWidget {
               runSpacing: 6,
               children: [
                 _MetaChip(
-                  icon: item.isGlobal ? Icons.campaign : Icons.class_,
-                  label: item.isGlobal
-                      ? 'Toàn trường'
-                      : (item.targetClassName ?? 'Theo lớp'),
+                  icon: switch (item.type) {
+                    'Global' => Icons.campaign,
+                    'Teachers' => Icons.groups,
+                    'Teacher' => Icons.person,
+                    _ => Icons.class_,
+                  },
+                  label: switch (item.type) {
+                    'Global' => 'Toàn trường',
+                    'Teachers' => 'Toàn bộ giáo viên',
+                    'Teacher' => item.targetUserName?.isNotEmpty == true
+                        ? 'GV: ${item.targetUserName}'
+                        : 'Một giáo viên',
+                    _ => item.targetClassName ?? 'Theo lớp',
+                  },
                 ),
-                if (!item.isGlobal)
+                if (item.type == 'Class')
                   _MetaChip(
                     icon: Icons.menu_book,
                     label: (item.subjectName?.isNotEmpty ?? false)
