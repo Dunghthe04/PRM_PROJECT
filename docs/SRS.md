@@ -36,7 +36,7 @@ Hệ thống được chia thành 6 phân hệ nghiệp vụ chính:
 
 ### Phân hệ 1: Xác thực, Cấu hình & Thông báo chung (Common - Mobile)
 *   **FR1.1 - Đăng nhập:** Đăng nhập bằng **Số điện thoại** và Mật khẩu. Tài khoản mới phải xác thực OTP SĐT trước khi đăng nhập.
-*   **FR1.2 - Phục hồi mật khẩu:** Yêu cầu cấp lại mật khẩu thông qua mã xác thực (OTP) gửi về **Số điện thoại**.
+*   **FR1.2 - Phục hồi mật khẩu:** Yêu cầu cấp lại mật khẩu thông qua mã xác thực (OTP) gửi về **Email/Gmail** đã gắn trên hồ sơ (SMTP). Đăng nhập vẫn bằng SĐT + mật khẩu (FR1.1).
 *   **FR1.3 - Quản lý hồ sơ:** Xem thông tin cá nhân, cập nhật Avatar và thay đổi mật khẩu định kỳ. Số điện thoại là định danh login (không tự đổi qua hồ sơ).
 *   **FR1.4 - Trung tâm Thông báo (Notification Center):** Nơi lưu trữ tất cả thông báo In-app và Push notification. Các luồng thông báo tự động bao gồm:
     *   Có điểm mới, có bài tập mới/sắp đến hạn nộp.
@@ -61,10 +61,11 @@ Hệ thống được chia thành 6 phân hệ nghiệp vụ chính:
     *   Xem lịch sử thanh toán và biên lai điện tử.
 
 ### Phân hệ 3: Dành cho Giáo viên (Teacher Dashboard - Mobile App)
-*   **FR3.1 - Điểm danh thông minh:** Hiển thị danh sách lớp. Cho phép thao tác điểm danh nhanh: Có mặt (P), Vắng mặt (A), Đi muộn (L). *(Online-only — không hỗ trợ offline/SQLite.)*
+*   **FR3.1 - Điểm danh thông minh:** Hiển thị danh sách lớp. Cho phép thao tác điểm danh nhanh: Có mặt (P), Vắng mặt (A), Đi muộn (L). *(Online-only — không hỗ trợ offline/SQLite.)* **Chỉ giáo viên chủ nhiệm** của lớp được điểm danh.
 *   **FR3.2 - (ĐÃ CHUYỂN SANG ADMIN):** ~~Nhập điểm số~~ không còn thuộc Giáo viên. Việc nhập/quản lý điểm số do Admin thực hiện (insert vào DB) — xem **FR5.6**. HS/PH vẫn xem điểm bình thường (FR2.3).
-*   **FR3.3 - Quản lý Đơn từ:** Nhận, xem xét đơn xin nghỉ của học sinh và thao tác Duyệt (Approve) / Từ chối (Reject). Hệ thống tự bắn thông báo kết quả cho HS/PH.
-*   **FR3.4 - Gửi Thông báo Lớp:** Soạn thảo văn bản (gắn môn dạy) và gửi Push Notification (1 chiều) đến phụ huynh/học sinh thuộc lớp mình phụ trách. Tin này **chỉ** xuất hiện ở chuông Thông báo → Đã nhận của PH/HS; Giáo viên xem lại ở tab **Đã gửi**. Không đăng lên Bảng tin công khai.
+*   **FR3.3 - Quản lý Đơn từ:** Nhận, xem xét đơn xin nghỉ của học sinh và thao tác Duyệt (Approve) / Từ chối (Reject). Hệ thống tự bắn thông báo kết quả cho HS/PH. **Chỉ giáo viên chủ nhiệm** lớp được duyệt/từ chối.
+*   **FR3.4 - Gửi Thông báo Lớp:** Soạn thảo văn bản và gửi Push Notification (1 chiều) đến PH/HS lớp. **Chủ nhiệm** gửi tin chủ nhiệm (không gắn môn) **hoặc** tin bộ môn nếu đang dạy môn đó; **GV không CN** chỉ gửi tin theo môn được phân công. Tin chỉ hiện ở chuông Đã nhận; GV xem lại ở tab **Đã gửi**. Không lên Bảng tin công khai.
+*   **Phân biệt GV chủ nhiệm / bộ môn:** Mỗi lớp có `HomeroomTeacherId` (chủ nhiệm). GV bộ môn gắn qua phân công dạy môn (`TeacherAssignment`). Cùng role Teacher, khác quyền theo bảng trên.
 *   **FR3.5 - Quản lý Bài tập (Assignments):** Tạo mới, chỉnh sửa, xóa bài tập (set deadline, đính kèm đề bài). Theo dõi trạng thái nộp bài, chấm điểm và ghi chú (feedback) trực tiếp vào bài nộp.
 
 ### Phân hệ 4: Thanh toán & Tài chính (Backend/Web Admin)

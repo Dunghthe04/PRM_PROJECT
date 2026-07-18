@@ -25,7 +25,7 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 
 > 📱 **Quyết định kiến trúc (vì đây là môn App Mobile):** KHÔNG làm Web Portal riêng. **Cả 4 vai trò dùng chung 1 app Flutter.** Admin dùng bản **Flutter Web/Desktop** (`flutter run -d chrome`) với layout rộng — cùng codebase, cùng API. Báo cáo ghi: *"Web Portal hiện thực bằng Flutter Web responsive"*.
 
-> 📱 **Auth:** Đăng ký / đăng nhập bằng **SĐT + mật khẩu**. OTP chỉ gửi về **điện thoại** (xác thực đăng ký + quên MK). Dev: OTP log ra console (`[DEV OTP SMS]`).
+> 📱 **Auth:** Đăng ký / đăng nhập bằng **SĐT + mật khẩu**. OTP đăng ký → SĐT (Dev log `[DEV OTP SMS]`). Quên MK → OTP gửi **Gmail thật qua SMTP** (cấu hình `Smtp` trong appsettings).
 
 > ⚠️ **1 thứ phải bổ sung so với code hiện tại** (chưa có trong model):
 > - **Entity Thời khóa biểu** (`TimetableSlot`: lớp, môn, GV, thứ, tiết, phòng) — cho FR2.3 → thêm ở Ngày 4.
@@ -39,13 +39,13 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 - [x] `appsettings.Development.json` + `dotnet ef database update` → DB `FSchoolDb` (18 bảng)
 
 ### ✅ NGÀY 2 — Bảo mật Auth (FR1.1 + NFR4.3)
-- [x] ⚠️ **Hash mật khẩu BCrypt** — [api/Services/UserService.cs](api/Services/UserService.cs)
-- [x] ⚠️ **Nhúng `userId` + `role` vào JWT claims** — [api/Common/JwtHelper.cs](api/Common/JwtHelper.cs) + [api/Controllers/UserController.cs](api/Controllers/UserController.cs)
+- [x] ⚠️ **Hash mật khẩu BCrypt** — [backend/Services/UserService.cs](backend/Services/UserService.cs)
+- [x] ⚠️ **Nhúng `userId` + `role` vào JWT claims** — [backend/Common/JwtHelper.cs](backend/Common/JwtHelper.cs) + [backend/Controllers/UserController.cs](backend/Controllers/UserController.cs)
 - [x] Áp `[Authorize(Roles=...)]`; test register/login trên Swagger
 
 ### ✅ NGÀY 3 — Hồ sơ & Khôi phục MK (FR1.2, FR1.3) · *mọi role*
 - [x] Xem/sửa hồ sơ, đổi mật khẩu, cập nhật avatar (FR1.3) — `/api/account/*`
-- [x] Quên mật khẩu qua OTP Email/SĐT (FR1.2) — `/api/auth/forgot|verify|reset`
+- [x] Quên mật khẩu qua OTP **Email/Gmail SMTP** (FR1.2) — `/api/auth/forgot|verify|reset` (login vẫn SĐT)
 
 ### ✅ NGÀY 4 — Danh mục + TKB + Phân công (FR5.2, FR5.3, FR2.3) · *Admin / insert DB*
 - [x] CRUD Khối, Semester, Subject, Class; gán Student vào Class (FR5.2)
@@ -87,7 +87,7 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 ## 🅑 GIAI ĐOẠN MOBILE (Ngày 13–18) — Student, Parent, Teacher
 
 ### ✅ NGÀY 13 — Nền Mobile (FR1.1, FR1.3, FR4.4)
-- [x] Đổi theme cam `#FF6B00` ([mobile/lib/main.dart](mobile/lib/main.dart) đang `Colors.blue`)
+- [x] Đổi theme cam `#FF6B00` ([mobile-app/lib/main.dart](mobile-app/lib/main.dart) đang `Colors.blue`)
 - [x] `dio` client + interceptor JWT, model từ DTO, secure storage
 - [x] Màn Đăng nhập + Bottom Navigation + điều hướng theo vai trò
 - [x] Màn Hồ sơ/đổi MK (FR1.3) + **Force Update** version check (FR4.4)
@@ -139,6 +139,12 @@ Mỗi ngày kết thúc bằng **chạy thử + commit**.
 - [x] Người tạo không tự nhận lại tin của mình ở chuông Đã nhận
 - [x] Mặc định luôn gửi Push (bỏ toggle trên form); snackbar thành công chỉ hiện «Đã gửi.»
 - [x] Flutter Web: bỏ qua Firebase khi `kIsWeb`; `apiBaseUrl` tự chọn localhost (web) / `10.0.2.2` (emulator)
+
+### ✅ Bổ sung — GV chủ nhiệm vs GV bộ môn
+- [x] `Class.HomeroomTeacherId` + migration; seed: GV A = CN 10A1, GV B = bộ môn Anh
+- [x] Chủ nhiệm: điểm danh + duyệt đơn nghỉ; Bộ môn: gửi TB theo môn (không điểm danh / không duyệt đơn)
+- [x] API `TeacherClassDto.isHomeroom`; Admin gán CN khi tạo/sửa lớp; UI picker hiện nhãn Chủ nhiệm / Bộ môn
+- [x] **Không đụng** phân hệ giao bài tập (FR3.5)
 
 ---
 

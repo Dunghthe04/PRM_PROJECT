@@ -5,7 +5,7 @@ Tài liệu dành cho người vào làm tiếp: mỗi chức năng ghi **mục 
 - Prefix: `/api`
 - Auth: JWT (`Authorization: Bearer <token>`), trừ mục đánh dấu *Public*
 - App: 1 codebase Flutter (mobile + Admin dùng Web/Desktop)
-- Seed demo: `api/Common/DbSeeder.cs` · MK chung `123456`
+- Seed demo: `backend/Common/DbSeeder.cs` · MK chung `123456`
 - Chi tiết kỹ thuật cũ hơn (có thể lệch UI): [API_ENDPOINTS.md](API_ENDPOINTS.md) · SRS: [SRS.md](SRS.md)
 
 ### Tài khoản demo (sau seed)
@@ -47,11 +47,11 @@ Flutter App (dio + JWT)
 
 ---
 
-### Mobile (Flutter) — thư mục `mobile/`
+### Mobile (Flutter) — thư mục `mobile-app/`
 
 | Công nghệ / package | Mục đích trong dự án | File / chỗ dùng điển hình |
 |---|---|---|
-| **Flutter + Dart** | UI đa nền tảng (Android / iOS / Web Admin) | `mobile/lib/` |
+| **Flutter + Dart** | UI đa nền tảng (Android / iOS / Web Admin) | `mobile-app/lib/` |
 | **MVC** (`controller` / `model` / `view`) | Tách màn hình · model DTO · gọi API | `lib/vn/edu/fpt/{controller,model,view}` |
 | **dio** | HTTP client gọi endpoint backend (GET/POST/…) | `service/api_client.dart` → mọi `*Controller` |
 | **Interceptor JWT** | Tự gắn `Authorization: Bearer …` vào mọi request | Trong `ApiClient` (dio interceptor) |
@@ -73,14 +73,14 @@ Flutter App (dio + JWT)
 
 ---
 
-### Backend (.NET) — thư mục `api/`
+### Backend (.NET) — thư mục `backend/`
 
 | Công nghệ / package | Mục đích trong dự án | File / chỗ dùng điển hình |
 |---|---|---|
-| **.NET 8 Web API** | Host REST API | `api/Program.cs` |
+| **.NET 8 Web API** | Host REST API | `backend/Program.cs` |
 | **Kiến trúc 3 lớp** | Controller → Service → Repository | `Controllers/` · `Services/` · `Repositories/` |
 | **Entity Framework Core** | ORM map C# ↔ SQL Server | `Models/AppDbContext.cs` |
-| **EF Migrations** | Tạo/cập nhật **schema** (bảng, cột, index) — *không phải seed data* | `api/Migrations/` |
+| **EF Migrations** | Tạo/cập nhật **schema** (bảng, cột, index) — *không phải seed data* | `backend/Migrations/` |
 | **DbSeeder** | Insert/xóa **dữ liệu demo** lúc start Development | `Common/DbSeeder.cs` |
 | **SQL Server** | Database chính | Connection string `appsettings*.json` |
 | **JWT Bearer** (`Microsoft.AspNetCore.Authentication.JwtBearer`) | Xác thực request; claim `userId` + `role` | `Common/JwtHelper.cs` · `[Authorize]` |
@@ -105,7 +105,8 @@ Flutter App (dio + JWT)
 | **Firebase FCM** | Push thông báo (điểm mới, đơn duyệt, nhắc phí…) | Mobile: Messaging · Server: FirebaseAdmin |
 | **VNPay** | Thanh toán học phí | `POST /api/payments/vnpay/create` + return/IPN |
 | **PayOS** | Thanh toán học phí (+ QR) | `POST /api/payments/payos/create` + webhook |
-| **OTP SMS** | Xác thực đăng ký / quên MK | Dev: log console `[DEV OTP SMS]` |
+| **OTP SMS** | Xác thực đăng ký (SĐT) | Dev: log console `[DEV OTP SMS]` |
+| **OTP Email** | Quên mật khẩu (FR1.2) | Gửi Gmail thật qua SMTP (`Smtp` trong appsettings) |
 
 ---
 
@@ -131,8 +132,8 @@ Flutter App (dio + JWT)
 | Đăng ký SĐT + MK → gửi OTP | POST | `/api/user/register` | *Public* |
 | Xác thực OTP đăng ký | POST | `/api/auth/verify-phone` | *Public* |
 | Gửi lại OTP | POST | `/api/auth/resend-otp` | *Public* |
-| Quên MK → gửi OTP về SĐT | POST | `/api/auth/forgot-password` | *Public* |
-| Verify OTP quên MK → `resetToken` | POST | `/api/auth/verify-otp` | *Public* |
+| Quên MK → gửi OTP về Email | POST | `/api/auth/forgot-password` | *Public* |
+| Verify OTP quên MK (email) → `resetToken` | POST | `/api/auth/verify-otp` | *Public* |
 | Đặt MK mới bằng `resetToken` | POST | `/api/auth/reset-password` | *Public* |
 
 ### 0.2 Hồ sơ cá nhân
@@ -431,7 +432,7 @@ Theo phạm vi dự án: **điểm Admin/Swagger/seed**; HS/PH chỉ xem. API v�
 
 ## 6. Ghi chú cho người maintain
 
-1. **Controller** nằm `api/Controllers/` — mỗi file ≈ 1 nhóm endpoint.  
+1. **Controller** nằm `backend/Controllers/` — mỗi file ≈ 1 nhóm endpoint.  
 2. **Service / Repository / DTO / Model** theo pattern 3 lớp.  
 3. **Seed wipe**: `Seed:ForceReset` trong `appsettings.Development.json` — `true` = xóa hết + seed lại khi start API.  
 4. **Không còn**: bài tập UI+API controller, import Excel user, sync offline điểm danh, xuất Excel/PDF báo cáo.  

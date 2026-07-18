@@ -1,28 +1,28 @@
 # Flutter/Dart
-mobile/.dart_tool/
-mobile/.idea/
-mobile/.pub-cache/
-mobile/.pub/
-mobile/build/
-mobile/ios/.symlinks/
-mobile/ios/Pods/
-mobile/macos/Flutter/ephemeral/
-mobile/macos/Pods/
+mobile-app/.dart_tool/
+mobile-app/.idea/
+mobile-app/.pub-cache/
+mobile-app/.pub/
+mobile-app/build/
+mobile-app/ios/.symlinks/
+mobile-app/ios/Pods/
+mobile-app/macos/Flutter/ephemeral/
+mobile-app/macos/Pods/
 *.log
 *.sqlite
 .DS_Store
 
 # .NET / Visual Studio
-api/bin/
-api/obj/
-api/**/bin/
-api/**/obj/
-api/.vs/
+backend/bin/
+backend/obj/
+backend/**/bin/
+backend/**/obj/
+backend/.vs/
 **/.vs/
-api/Properties/launchSettings.json
-api/appsettings.Development.json
+backend/Properties/launchSettings.json
+backend/appsettings.Development.json
 # Firebase service account (khóa bí mật — KHÔNG commit)
-api/firebase-service-account.json
+backend/firebase-service-account.json
 *.user
 *.userosscache
 *.suo
@@ -31,3 +31,12 @@ api/firebase-service-account.json
 *.db-wal
 *.vsidx
 *.dtbcache.v2
+
+# Web portal (React)
+web-portal/node_modules/
+web-portal/dist/
+
+# Thư mục cũ còn sót do file lock (VS / Dart / npm) — có thể xóa tay sau
+/api/
+/mobile/
+/web/

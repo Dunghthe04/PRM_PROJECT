@@ -32,16 +32,16 @@ Bản thiết kế API suy ra từ [SRS.md](SRS.md) + domain model hiện có. C
 ---
 
 ## 1. Auth & Account — FR1.1, FR1.2, FR1.3 · Ngày 2–3
-> **Quyết định sản phẩm:** Đăng ký / đăng nhập bằng **SĐT + mật khẩu**. OTP chỉ gửi về **điện thoại** (xác thực đăng ký + quên MK).
+> **Quyết định sản phẩm:** Đăng ký / đăng nhập bằng **SĐT + mật khẩu**. OTP đăng ký → **SĐT**. Quên MK → OTP gửi về **Email**.
 
 | # | Method | Endpoint | Role | Mô tả |
 |---|---|---|---|---|
 | 1 | POST | `/api/user/login` | *Public* | Đăng nhập SĐT + mật khẩu, trả JWT ✅ |
 | 2 | POST | `/api/user/register` | *Public* | Đăng ký bằng SĐT + gửi OTP xác thực ✅ |
-| 3 | POST | `/api/auth/verify-phone` | *Public* | Xác thực OTP đăng ký ✅ |
-| 4 | POST | `/api/auth/resend-otp` | *Public* | Gửi lại OTP (Register / ResetPassword) ✅ |
-| 5 | POST | `/api/auth/forgot-password` | *Public* | Gửi OTP quên MK về SĐT ✅ |
-| 6 | POST | `/api/auth/verify-otp` | *Public* | Xác thực OTP quên MK → resetToken ✅ |
+| 3 | POST | `/api/auth/verify-phone` | *Public* | Xác thực OTP đăng ký (SĐT) ✅ |
+| 4 | POST | `/api/auth/resend-otp` | *Public* | Gửi lại OTP (Register=`phone`, ResetPassword=`email`) ✅ |
+| 5 | POST | `/api/auth/forgot-password` | *Public* | Body `{ email }` — gửi OTP quên MK về email ✅ |
+| 6 | POST | `/api/auth/verify-otp` | *Public* | Body `{ email, otpCode }` → `resetToken` ✅ |
 | 7 | POST | `/api/auth/reset-password` | *Public* | Đặt lại mật khẩu sau OTP ✅ |
 | 8 | GET | `/api/account/me` | — | Lấy hồ sơ người dùng hiện tại ✅ |
 | 9 | PUT | `/api/account/me` | — | Cập nhật FullName / Email (không đổi Phone) ✅ |
