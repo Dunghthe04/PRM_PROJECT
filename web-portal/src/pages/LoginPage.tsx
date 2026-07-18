@@ -1,6 +1,6 @@
 import { Button, Card, Form, Input, Typography, message } from 'antd'
 import { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 
 export function LoginPage() {
@@ -69,6 +69,9 @@ export function LoginPage() {
           >
             <Input.Password size="large" autoComplete="new-password" />
           </Form.Item>
+          <div style={{ textAlign: 'right', marginBottom: 16 }}>
+            <Link to="/forgot-password">Quên mật khẩu?</Link>
+          </div>
           <Button
             type="primary"
             htmlType="submit"

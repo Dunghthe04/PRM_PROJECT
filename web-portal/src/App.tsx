@@ -5,6 +5,7 @@ import { AuthProvider } from './auth/AuthContext'
 import { RequireAuth } from './auth/RequireAuth'
 import { AdminLayout } from './layouts/AdminLayout'
 import { TeacherLayout } from './layouts/TeacherLayout'
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { LoginPage } from './pages/LoginPage'
 import { AdminAnnouncePage } from './pages/admin/AnnouncePage'
 import { AdminAssignmentsPage } from './pages/admin/AssignmentsPage'
@@ -34,6 +35,7 @@ export default function App() {
           <BrowserRouter>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route element={<RequireAuth roles={['Admin']} />}>
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<AdminReportsPage />} />
