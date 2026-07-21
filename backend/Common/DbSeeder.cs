@@ -55,7 +55,7 @@ public static class DbSeeder
         await db.PaymentTransactions.ExecuteDeleteAsync();
         await db.FeeInvoices.ExecuteDeleteAsync();
         await db.FeeCategories.ExecuteDeleteAsync();
-        await db.PaymentGatewayConfigs.ExecuteDeleteAsync();
+        // PaymentGatewayConfigs: giữ lại khi ForceReset (khôi phục sau seed).
         await db.Notifications.ExecuteDeleteAsync();
         await db.UserDevices.ExecuteDeleteAsync();
         await db.Announcements.ExecuteDeleteAsync();
@@ -158,8 +158,12 @@ public static class DbSeeder
             await db.SaveChangesAsync();
             classBySem[sem.Id] = cls;
 
-            foreach (var st in students)
-                db.ClassStudents.Add(new ClassStudent { ClassId = cls.Id, StudentId = st.Id });
+            // Chỉ gán HS vào lớp kỳ đang học — tránh 4 bản ghi ClassStudents/HS (lỗi tạo đơn nghỉ).
+            if (sem.Id == hk2_2526.Id)
+            {
+                foreach (var st in students)
+                    db.ClassStudents.Add(new ClassStudent { ClassId = cls.Id, StudentId = st.Id });
+            }
 
             db.TeacherAssignments.AddRange(
                 new TeacherAssignment { TeacherId = teacher.Id, ClassId = cls.Id, SubjectId = math.Id },

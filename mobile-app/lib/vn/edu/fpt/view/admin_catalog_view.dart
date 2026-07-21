@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../common/format_utils.dart';
+import '../common/list_load_state.dart';
 import '../controller/admin_catalog_controller.dart';
 import '../controller/admin_user_controller.dart';
 import '../model/user_model.dart';
@@ -48,18 +49,20 @@ class _SemestersTab extends StatefulWidget {
 
 class _SemestersTabState extends State<_SemestersTab> {
   final _c = AdminCatalogController();
-  late Future<(List<SemesterModel>?, String?)> _future;
+  final _state = ListLoadState<SemesterModel>();
 
   @override
   void initState() {
     super.initState();
-    _future = _c.getSemesters();
+    _loadList();
   }
 
-  Future<void> _reload() async {
-    setState(() => _future = _c.getSemesters());
-    await _future;
-  }
+  Future<void> _loadList() => reloadList(
+        setState: setState,
+        mounted: () => mounted,
+        state: _state,
+        fetch: () => _c.getSemesters(),
+      );
 
   Future<void> _openForm({SemesterModel? edit}) async {
     final nameCtrl = TextEditingController(text: edit?.name ?? '');
@@ -134,7 +137,7 @@ class _SemestersTabState extends State<_SemestersTab> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
       return;
     }
-    _reload();
+    _loadList();
   }
 
   Future<void> _delete(SemesterModel s) async {
@@ -153,7 +156,7 @@ class _SemestersTabState extends State<_SemestersTab> {
     final (success, msg) = await _c.deleteSemester(s.id);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-    if (success) _reload();
+    if (success) _loadList();
   }
 
   @override
@@ -171,45 +174,41 @@ class _SemestersTabState extends State<_SemestersTab> {
             ),
           ),
         ),
-        Expanded(
-          child: FutureBuilder(
-            future: _future,
-            builder: (context, snap) {
-              if (snap.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final (list, err) = snap.data ?? (null, 'Lỗi.');
-              if (err != null) return Center(child: Text(err));
-              final items = list ?? [];
-              if (items.isEmpty) {
-                return const Center(child: Text('Chưa có kỳ học.'));
-              }
-              return ListView.separated(
-                itemCount: items.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (_, i) {
-                  final s = items[i];
-                  return ListTile(
-                    title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(
-                        '${FormatUtils.date(s.startDate)} → ${FormatUtils.date(s.endDate)}'),
-                    trailing: PopupMenuButton<String>(
-                      onSelected: (v) {
-                        if (v == 'edit') _openForm(edit: s);
-                        if (v == 'del') _delete(s);
-                      },
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(value: 'edit', child: Text('Sửa')),
-                        PopupMenuItem(value: 'del', child: Text('Xóa')),
-                      ],
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
+        Expanded(child: _buildList()),
       ],
+    );
+  }
+
+  Widget _buildList() {
+    if (_state.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_state.error != null) return Center(child: Text(_state.error!));
+    final items = _state.items ?? [];
+    if (items.isEmpty) {
+      return const Center(child: Text('Chưa có kỳ học.'));
+    }
+    return ListView.separated(
+      itemCount: items.length,
+      separatorBuilder: (_, _) => const Divider(height: 1),
+      itemBuilder: (_, i) {
+        final s = items[i];
+        return ListTile(
+          title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+          subtitle: Text(
+              '${FormatUtils.date(s.startDate)} → ${FormatUtils.date(s.endDate)}'),
+          trailing: PopupMenuButton<String>(
+            onSelected: (v) {
+              if (v == 'edit') _openForm(edit: s);
+              if (v == 'del') _delete(s);
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'edit', child: Text('Sửa')),
+              PopupMenuItem(value: 'del', child: Text('Xóa')),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -225,18 +224,20 @@ class _SubjectsTab extends StatefulWidget {
 
 class _SubjectsTabState extends State<_SubjectsTab> {
   final _c = AdminCatalogController();
-  late Future<(List<SubjectModel>?, String?)> _future;
+  final _state = ListLoadState<SubjectModel>();
 
   @override
   void initState() {
     super.initState();
-    _future = _c.getSubjects();
+    _loadList();
   }
 
-  Future<void> _reload() async {
-    setState(() => _future = _c.getSubjects());
-    await _future;
-  }
+  Future<void> _loadList() => reloadList(
+        setState: setState,
+        mounted: () => mounted,
+        state: _state,
+        fetch: () => _c.getSubjects(),
+      );
 
   Future<void> _openForm({SubjectModel? edit}) async {
     final nameCtrl = TextEditingController(text: edit?.name ?? '');
@@ -278,14 +279,14 @@ class _SubjectsTabState extends State<_SubjectsTab> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
       return;
     }
-    _reload();
+    _loadList();
   }
 
   Future<void> _delete(SubjectModel s) async {
     final (success, msg) = await _c.deleteSubject(s.id);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-    if (success) _reload();
+    if (success) _loadList();
   }
 
   @override
@@ -303,41 +304,37 @@ class _SubjectsTabState extends State<_SubjectsTab> {
             ),
           ),
         ),
-        Expanded(
-          child: FutureBuilder(
-            future: _future,
-            builder: (context, snap) {
-              if (snap.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final (list, err) = snap.data ?? (null, 'Lỗi.');
-              if (err != null) return Center(child: Text(err));
-              final items = list ?? [];
-              return ListView.separated(
-                itemCount: items.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (_, i) {
-                  final s = items[i];
-                  return ListTile(
-                    title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(s.code),
-                    trailing: PopupMenuButton<String>(
-                      onSelected: (v) {
-                        if (v == 'edit') _openForm(edit: s);
-                        if (v == 'del') _delete(s);
-                      },
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(value: 'edit', child: Text('Sửa')),
-                        PopupMenuItem(value: 'del', child: Text('Xóa')),
-                      ],
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
+        Expanded(child: _buildList()),
       ],
+    );
+  }
+
+  Widget _buildList() {
+    if (_state.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_state.error != null) return Center(child: Text(_state.error!));
+    final items = _state.items ?? [];
+    return ListView.separated(
+      itemCount: items.length,
+      separatorBuilder: (_, _) => const Divider(height: 1),
+      itemBuilder: (_, i) {
+        final s = items[i];
+        return ListTile(
+          title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+          subtitle: Text(s.code),
+          trailing: PopupMenuButton<String>(
+            onSelected: (v) {
+              if (v == 'edit') _openForm(edit: s);
+              if (v == 'del') _delete(s);
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'edit', child: Text('Sửa')),
+              PopupMenuItem(value: 'del', child: Text('Xóa')),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -354,12 +351,12 @@ class _ClassesTab extends StatefulWidget {
 class _ClassesTabState extends State<_ClassesTab> {
   final _c = AdminCatalogController();
   List<SemesterModel> _semesters = [];
-  late Future<(List<ClassModel>?, String?)> _future;
+  final _state = ListLoadState<ClassModel>();
 
   @override
   void initState() {
     super.initState();
-    _future = _c.getClasses();
+    _loadList();
     _loadSemesters();
   }
 
@@ -368,10 +365,12 @@ class _ClassesTabState extends State<_ClassesTab> {
     if (mounted && list != null) setState(() => _semesters = list);
   }
 
-  Future<void> _reload() async {
-    setState(() => _future = _c.getClasses());
-    await _future;
-  }
+  Future<void> _loadList() => reloadList(
+        setState: setState,
+        mounted: () => mounted,
+        state: _state,
+        fetch: () => _c.getClasses(),
+      );
 
   Future<void> _openForm({ClassModel? edit}) async {
     if (_semesters.isEmpty) {
@@ -468,14 +467,14 @@ class _ClassesTabState extends State<_ClassesTab> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
       return;
     }
-    _reload();
+    _loadList();
   }
 
   Future<void> _delete(ClassModel c) async {
     final (success, msg) = await _c.deleteClass(c.id);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-    if (success) _reload();
+    if (success) _loadList();
   }
 
   @override
@@ -493,44 +492,40 @@ class _ClassesTabState extends State<_ClassesTab> {
             ),
           ),
         ),
-        Expanded(
-          child: FutureBuilder(
-            future: _future,
-            builder: (context, snap) {
-              if (snap.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final (list, err) = snap.data ?? (null, 'Lỗi.');
-              if (err != null) return Center(child: Text(err));
-              final items = list ?? [];
-              return ListView.separated(
-                itemCount: items.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (_, i) {
-                  final c = items[i];
-                  return ListTile(
-                    title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(
-                      '${c.semesterName ?? "Kỳ #${c.semesterId}"} • ${c.studentCount} HS'
-                      '${c.homeroomTeacherName != null ? ' • CN: ${c.homeroomTeacherName}' : ''}',
-                    ),
-                    trailing: PopupMenuButton<String>(
-                      onSelected: (v) {
-                        if (v == 'edit') _openForm(edit: c);
-                        if (v == 'del') _delete(c);
-                      },
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(value: 'edit', child: Text('Sửa')),
-                        PopupMenuItem(value: 'del', child: Text('Xóa')),
-                      ],
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
+        Expanded(child: _buildList()),
       ],
+    );
+  }
+
+  Widget _buildList() {
+    if (_state.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_state.error != null) return Center(child: Text(_state.error!));
+    final items = _state.items ?? [];
+    return ListView.separated(
+      itemCount: items.length,
+      separatorBuilder: (_, _) => const Divider(height: 1),
+      itemBuilder: (_, i) {
+        final c = items[i];
+        return ListTile(
+          title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+          subtitle: Text(
+            '${c.semesterName ?? "Kỳ #${c.semesterId}"} • ${c.studentCount} HS'
+            '${c.homeroomTeacherName != null ? ' • CN: ${c.homeroomTeacherName}' : ''}',
+          ),
+          trailing: PopupMenuButton<String>(
+            onSelected: (v) {
+              if (v == 'edit') _openForm(edit: c);
+              if (v == 'del') _delete(c);
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'edit', child: Text('Sửa')),
+              PopupMenuItem(value: 'del', child: Text('Xóa')),
+            ],
+          ),
+        );
+      },
     );
   }
 }

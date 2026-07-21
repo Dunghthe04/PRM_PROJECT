@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../common/app_colors.dart';
 import '../common/format_utils.dart';
+import '../common/list_load_state.dart';
 import '../controller/announcement_controller.dart';
 import '../controller/notification_controller.dart';
 import '../model/announcement_model.dart';
@@ -12,10 +13,12 @@ import 'announcement_view.dart';
 class NotificationTab extends StatefulWidget {
   final VoidCallback? onUnreadChanged;
   final bool showSentHistory;
+  final bool isTabActive;
   const NotificationTab({
     super.key,
     this.onUnreadChanged,
     this.showSentHistory = false,
+    this.isTabActive = true,
   });
 
   @override
@@ -25,17 +28,39 @@ class NotificationTab extends StatefulWidget {
 class _NotificationTabState extends State<NotificationTab>
     with SingleTickerProviderStateMixin {
   TabController? _tabs;
+  final _inboxKey = GlobalKey<_InboxListState>();
+  final _sentListKey = GlobalKey<_SentListState>();
 
   @override
   void initState() {
     super.initState();
     if (widget.showSentHistory) {
       _tabs = TabController(length: 2, vsync: this);
+      _tabs!.addListener(_onTabChanged);
+    }
+  }
+
+  void _onTabChanged() {
+    if (_tabs == null || _tabs!.indexIsChanging) return;
+    if (_tabs!.index == 1) {
+      _sentListKey.currentState?.loadList();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant NotificationTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.isTabActive && widget.isTabActive) {
+      _inboxKey.currentState?.loadList();
+      if (_tabs?.index == 1) {
+        _sentListKey.currentState?.loadList();
+      }
     }
   }
 
   @override
   void dispose() {
+    _tabs?.removeListener(_onTabChanged);
     _tabs?.dispose();
     super.dispose();
   }
@@ -44,7 +69,10 @@ class _NotificationTabState extends State<NotificationTab>
   Widget build(BuildContext context) {
     // HS/PH/Admin: chỉ hộp thư nhận.
     if (!widget.showSentHistory) {
-      return _InboxList(onUnreadChanged: widget.onUnreadChanged);
+      return _InboxList(
+        key: _inboxKey,
+        onUnreadChanged: widget.onUnreadChanged,
+      );
     }
 
     // GV: Đã nhận + Đã gửi (lịch sử TB lớp).
@@ -64,8 +92,11 @@ class _NotificationTabState extends State<NotificationTab>
           child: TabBarView(
             controller: _tabs,
             children: [
-              _InboxList(onUnreadChanged: widget.onUnreadChanged),
-              const _SentList(),
+              _InboxList(
+                key: _inboxKey,
+                onUnreadChanged: widget.onUnreadChanged,
+              ),
+              _SentList(key: _sentListKey),
             ],
           ),
         ),
@@ -77,7 +108,7 @@ class _NotificationTabState extends State<NotificationTab>
 /// Danh sách thông báo in-app đã nhận.
 class _InboxList extends StatefulWidget {
   final VoidCallback? onUnreadChanged;
-  const _InboxList({this.onUnreadChanged});
+  const _InboxList({super.key, this.onUnreadChanged});
 
   @override
   State<_InboxList> createState() => _InboxListState();
@@ -85,17 +116,24 @@ class _InboxList extends StatefulWidget {
 
 class _InboxListState extends State<_InboxList> {
   final NotificationController _controller = NotificationController();
-  late Future<(List<NotificationModel>?, String?)> _future;
+  final _state = ListLoadState<NotificationModel>();
 
   @override
   void initState() {
     super.initState();
-    _future = _controller.getList();
+    _loadList();
   }
 
-  Future<void> _reload() async {
-    setState(() => _future = _controller.getList());
-    await _future;
+  /// Public để tab cha gọi khi tab được focus lại.
+  Future<void> loadList() => _loadList();
+
+  Future<void> _loadList() async {
+    await reloadList(
+      setState: setState,
+      mounted: () => mounted,
+      state: _state,
+      fetch: () => _controller.getList(),
+    );
     widget.onUnreadChanged?.call();
   }
 
@@ -116,7 +154,84 @@ class _InboxListState extends State<_InboxList> {
 
   Future<void> _markAll() async {
     final ok = await _controller.markAllRead();
-    if (ok && mounted) await _reload();
+    if (ok && mounted) await _loadList();
+  }
+
+  Widget _buildListBody() {
+    if (_state.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final (list, error) = (_state.items, _state.error ?? 'Không tải được dữ liệu.');
+
+    if (_state.error != null) {
+      return _ErrorRetry(message: error, onRetry: _loadList);
+    }
+
+    if (list == null || list.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _loadList,
+        child: ListView(
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('Chưa có thông báo nào.')),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadList,
+      child: ListView.separated(
+        itemCount: list.length,
+        separatorBuilder: (_, _) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final item = list[index];
+          return ListTile(
+            leading: Icon(
+              item.isRead
+                  ? Icons.notifications_none
+                  : Icons.notifications_active,
+              color:
+                  item.isRead ? AppColors.textGrey : AppColors.primary,
+            ),
+            title: Text(
+              item.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight:
+                    item.isRead ? FontWeight.normal : FontWeight.bold,
+              ),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.message,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  FormatUtils.timeAgo(item.createdAt),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textGrey,
+                  ),
+                ),
+              ],
+            ),
+            trailing: Icon(
+              Icons.chevron_right,
+              color: Colors.grey.shade400,
+            ),
+            isThreeLine: true,
+            onTap: () => _onTapItem(item),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -131,90 +246,7 @@ class _InboxListState extends State<_InboxList> {
             label: const Text('Đánh dấu đã đọc tất cả'),
           ),
         ),
-        Expanded(
-          child: FutureBuilder<(List<NotificationModel>?, String?)>(
-            future: _future,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final (list, error) =
-                  snapshot.data ?? (null, 'Không tải được dữ liệu.');
-
-              if (error != null) {
-                return _ErrorRetry(message: error, onRetry: _reload);
-              }
-
-              if (list == null || list.isEmpty) {
-                return RefreshIndicator(
-                  onRefresh: _reload,
-                  child: ListView(
-                    children: const [
-                      SizedBox(height: 120),
-                      Center(child: Text('Chưa có thông báo nào.')),
-                    ],
-                  ),
-                );
-              }
-
-              return RefreshIndicator(
-                onRefresh: _reload,
-                child: ListView.separated(
-                  itemCount: list.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final item = list[index];
-                    return ListTile(
-                      leading: Icon(
-                        item.isRead
-                            ? Icons.notifications_none
-                            : Icons.notifications_active,
-                        color: item.isRead
-                            ? AppColors.textGrey
-                            : AppColors.primary,
-                      ),
-                      title: Text(
-                        item.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: item.isRead
-                              ? FontWeight.normal
-                              : FontWeight.bold,
-                        ),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.message,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            FormatUtils.timeAgo(item.createdAt),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textGrey,
-                            ),
-                          ),
-                        ],
-                      ),
-                      trailing: Icon(
-                        Icons.chevron_right,
-                        color: Colors.grey.shade400,
-                      ),
-                      isThreeLine: true,
-                      onTap: () => _onTapItem(item),
-                    );
-                  },
-                ),
-              );
-            },
-          ),
-        ),
+        Expanded(child: _buildListBody()),
       ],
     );
   }
@@ -222,7 +254,7 @@ class _InboxListState extends State<_InboxList> {
 
 /// Lịch sử thông báo lớp do GV đã gửi (GET /announcements/mine).
 class _SentList extends StatefulWidget {
-  const _SentList();
+  const _SentList({super.key});
 
   @override
   State<_SentList> createState() => _SentListState();
@@ -230,142 +262,141 @@ class _SentList extends StatefulWidget {
 
 class _SentListState extends State<_SentList> {
   final AnnouncementController _controller = AnnouncementController();
-  late Future<(List<AnnouncementModel>?, String?)> _future;
+  final _state = ListLoadState<AnnouncementModel>();
 
   @override
   void initState() {
     super.initState();
-    _future = _controller.getMine();
+    loadList();
   }
 
-  Future<void> _reload() async {
-    setState(() => _future = _controller.getMine());
-    await _future;
-  }
+  /// Public để tab cha gọi khi chuyển sang tab Đã gửi.
+  Future<void> loadList() => reloadList(
+        setState: setState,
+        mounted: () => mounted,
+        state: _state,
+        fetch: () => _controller.getMine(),
+      );
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<(List<AnnouncementModel>?, String?)>(
-      future: _future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    if (_state.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-        final (list, error) = snapshot.data ?? (null, 'Không tải được dữ liệu.');
+    final (list, error) =
+        (_state.items, _state.error ?? 'Không tải được dữ liệu.');
 
-        if (error != null) {
-          return _ErrorRetry(message: error, onRetry: _reload);
-        }
+    if (_state.error != null) {
+      return _ErrorRetry(message: error, onRetry: loadList);
+    }
 
-        if (list == null || list.isEmpty) {
-          return RefreshIndicator(
-            onRefresh: _reload,
-            child: ListView(
-              children: const [
-                SizedBox(height: 120),
-                Center(child: Text('Bạn chưa gửi thông báo nào.')),
-              ],
-            ),
-          );
-        }
+    if (list == null || list.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: loadList,
+        child: ListView(
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('Bạn chưa gửi thông báo nào.')),
+          ],
+        ),
+      );
+    }
 
-        return RefreshIndicator(
-          onRefresh: _reload,
-          child: ListView.separated(
-            padding: const EdgeInsets.all(12),
-            itemCount: list.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final item = list[index];
-              return Card(
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => AnnouncementDetailView(item: item),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+    return RefreshIndicator(
+      onRefresh: loadList,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(12),
+        itemCount: list.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
+        itemBuilder: (context, index) {
+          final item = list[index];
+          return Card(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AnnouncementDetailView(item: item),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 18,
-                              backgroundColor:
-                                  AppColors.primary.withValues(alpha: 0.15),
-                              child: Icon(
-                                item.isGlobal ? Icons.campaign : Icons.send,
-                                color: AppColors.primary,
-                                size: 18,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                item.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            Icon(Icons.chevron_right,
-                                color: Colors.grey.shade400),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          item.content,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          children: [
-                            if (item.isGlobal)
-                              const _Chip(
-                                icon: Icons.campaign,
-                                label: 'Toàn trường',
-                              )
-                            else ...[
-                              _Chip(
-                                icon: Icons.class_,
-                                label: item.targetClassName ?? 'Lớp',
-                              ),
-                              _Chip(
-                                icon: Icons.menu_book,
-                                label: (item.subjectName?.isNotEmpty ?? false)
-                                    ? item.subjectName!
-                                    : 'Môn học',
-                              ),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          FormatUtils.timeAgo(item.createdAt),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textGrey,
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor:
+                              AppColors.primary.withValues(alpha: 0.15),
+                          child: Icon(
+                            item.isGlobal ? Icons.campaign : Icons.send,
+                            color: AppColors.primary,
+                            size: 18,
                           ),
                         ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Icon(Icons.chevron_right,
+                            color: Colors.grey.shade400),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    Text(
+                      item.content,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        if (item.isGlobal)
+                          const _Chip(
+                            icon: Icons.campaign,
+                            label: 'Toàn trường',
+                          )
+                        else ...[
+                          _Chip(
+                            icon: Icons.class_,
+                            label: item.targetClassName ?? 'Lớp',
+                          ),
+                          _Chip(
+                            icon: Icons.menu_book,
+                            label: (item.subjectName?.isNotEmpty ?? false)
+                                ? item.subjectName!
+                                : 'Môn học',
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      FormatUtils.timeAgo(item.createdAt),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textGrey,
+                      ),
+                    ),
+                  ],
                 ),
-              );
-            },
-          ),
-        );
-      },
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

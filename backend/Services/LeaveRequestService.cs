@@ -7,7 +7,7 @@ namespace Api.Services;
 
 /// <summary>
 /// Nghiệp vụ đơn xin nghỉ (FR2.5, FR3.3 — Ngày 9 Bước 4).
-/// HS/PH tạo đơn → GV duyệt/từ chối → ghi thông báo in-app.
+/// PH tạo đơn cho con → GV duyệt/từ chối → ghi thông báo in-app. HS chỉ xem.
 /// </summary>
 public interface ILeaveRequestService
 {
@@ -100,28 +100,23 @@ public class LeaveRequestService : ILeaveRequestService
     public async Task<(LeaveRequestDto? Result, string? Error)> CreateAsync(
         CreateLeaveRequestDto dto, int actorId, UserRole actorRole)
     {
-        if (actorRole is not (UserRole.Student or UserRole.Parent))
-            return (null, "Chỉ học sinh hoặc phụ huynh được tạo đơn xin nghỉ.");
+        if (actorRole != UserRole.Parent)
+            return (null, "Chỉ phụ huynh được tạo đơn xin nghỉ.");
 
         if (string.IsNullOrWhiteSpace(dto.Reason))
             return (null, "Lý do xin nghỉ là bắt buộc.");
 
-        var studentId = actorRole == UserRole.Student
-            ? actorId
-            : dto.StudentId;
-
-        if (!studentId.HasValue || studentId.Value <= 0)
+        if (!dto.StudentId.HasValue || dto.StudentId.Value <= 0)
             return (null, "studentId là bắt buộc khi phụ huynh tạo đơn.");
 
-        if (actorRole == UserRole.Parent)
-        {
-            var isChild = await _context.StudentParents
-                .AnyAsync(sp => sp.ParentId == actorId && sp.StudentId == studentId.Value);
-            if (!isChild)
-                return (null, "Bạn không có quyền tạo đơn cho học sinh này.");
-        }
+        var studentId = dto.StudentId.Value;
 
-        var (classId, classIdError) = await ResolveClassIdAsync(studentId.Value, dto.ClassId);
+        var isChild = await _context.StudentParents
+            .AnyAsync(sp => sp.ParentId == actorId && sp.StudentId == studentId);
+        if (!isChild)
+            return (null, "Bạn không có quyền tạo đơn cho học sinh này.");
+
+        var (classId, classIdError) = await ResolveClassIdAsync(studentId, dto.ClassId);
         if (classIdError != null) return (null, classIdError);
 
         var leaveDate = dto.Date.Date;
@@ -131,7 +126,7 @@ public class LeaveRequestService : ILeaveRequestService
         var entity = new LeaveRequest
         {
             ClassId = classId,
-            StudentId = studentId.Value,
+            StudentId = studentId,
             SubmittedByUserId = actorId,
             Date = leaveDate,
             Reason = dto.Reason.Trim(),
@@ -205,19 +200,13 @@ public class LeaveRequestService : ILeaveRequestService
         if (entity.Status != LeaveRequestStatus.Pending)
             return (false, "Chỉ hủy được đơn đang chờ duyệt.");
 
-        if (actorRole == UserRole.Student && entity.StudentId != actorId)
+        if (actorRole != UserRole.Parent)
+            return (false, "Chỉ phụ huynh được hủy đơn.");
+
+        var isChild = await _context.StudentParents
+            .AnyAsync(sp => sp.ParentId == actorId && sp.StudentId == entity.StudentId);
+        if (!isChild)
             return (false, "Bạn không có quyền hủy đơn này.");
-
-        if (actorRole == UserRole.Parent)
-        {
-            var isChild = await _context.StudentParents
-                .AnyAsync(sp => sp.ParentId == actorId && sp.StudentId == entity.StudentId);
-            if (!isChild)
-                return (false, "Bạn không có quyền hủy đơn này.");
-        }
-
-        if (actorRole is not (UserRole.Student or UserRole.Parent))
-            return (false, "Chỉ học sinh hoặc phụ huynh được hủy đơn.");
 
         await _leaveRequestRepository.DeleteAsync(entity);
         return (true, "Đã hủy đơn xin nghỉ.");

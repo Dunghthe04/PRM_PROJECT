@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../common/app_colors.dart';
 import '../common/format_utils.dart';
+import '../common/list_load_state.dart';
 import '../controller/admin_user_controller.dart';
 import '../controller/announcement_controller.dart';
 import '../model/announcement_model.dart';
@@ -324,26 +325,28 @@ class _AdminSentList extends StatefulWidget {
 
 class _AdminSentListState extends State<_AdminSentList> {
   final _controller = AnnouncementController();
-  late Future<(List<AnnouncementModel>?, String?)> _future;
+  final _state = ListLoadState<AnnouncementModel>();
 
   @override
   void initState() {
     super.initState();
-    _future = _controller.getMine();
+    _loadList();
   }
 
   @override
   void didUpdateWidget(covariant _AdminSentList oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.reloadToken != widget.reloadToken) {
-      _reload();
+      _loadList();
     }
   }
 
-  Future<void> _reload() async {
-    setState(() => _future = _controller.getMine());
-    await _future;
-  }
+  Future<void> _loadList() => reloadList(
+        setState: setState,
+        mounted: () => mounted,
+        state: _state,
+        fetch: () => _controller.getMine(),
+      );
 
   /// Nhãn đối tượng nhận để Admin dễ lọc bằng mắt.
   String _audienceLabel(AnnouncementModel a) {
@@ -378,144 +381,137 @@ class _AdminSentListState extends State<_AdminSentList> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<(List<AnnouncementModel>?, String?)>(
-      future: _future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    if (_state.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-        final (list, error) = snapshot.data ?? (null, 'Không tải được dữ liệu.');
+    if (_state.error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_state.error!, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: _loadList,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Thử lại'),
+            ),
+          ],
+        ),
+      );
+    }
 
-        if (error != null) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(error, textAlign: TextAlign.center),
-                const SizedBox(height: 12),
-                ElevatedButton.icon(
-                  onPressed: _reload,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Thử lại'),
+    final list = _state.items;
+    if (list == null || list.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _loadList,
+        child: ListView(
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('Chưa gửi thông báo nào.')),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadList,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(12),
+        itemCount: list.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
+        itemBuilder: (context, index) {
+          final item = list[index];
+          return Card(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AnnouncementDetailView(item: item),
                 ),
-              ],
-            ),
-          );
-        }
-
-        if (list == null || list.isEmpty) {
-          return RefreshIndicator(
-            onRefresh: _reload,
-            child: ListView(
-              children: const [
-                SizedBox(height: 120),
-                Center(child: Text('Chưa gửi thông báo nào.')),
-              ],
-            ),
-          );
-        }
-
-        return RefreshIndicator(
-          onRefresh: _reload,
-          child: ListView.separated(
-            padding: const EdgeInsets.all(12),
-            itemCount: list.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final item = list[index];
-              return Card(
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => AnnouncementDetailView(item: item),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 18,
-                              backgroundColor:
-                                  AppColors.primary.withValues(alpha: 0.15),
-                              child: Icon(
-                                _audienceIcon(item),
-                                color: AppColors.primary,
-                                size: 18,
-                              ),
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor:
+                              AppColors.primary.withValues(alpha: 0.15),
+                          child: Icon(
+                            _audienceIcon(item),
+                            color: AppColors.primary,
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                item.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            Icon(Icons.chevron_right,
-                                color: Colors.grey.shade400),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          item.content,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color:
-                                    AppColors.primary.withValues(alpha: 0.25)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(_audienceIcon(item),
-                                  size: 12, color: AppColors.primary),
-                              const SizedBox(width: 4),
-                              Text(
-                                _audienceLabel(item),
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.primaryDark,
-                                ),
-                              ),
-                            ],
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          FormatUtils.timeAgo(item.createdAt),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textGrey,
-                          ),
-                        ),
+                        Icon(Icons.chevron_right,
+                            color: Colors.grey.shade400),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    Text(
+                      item.content,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.25)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_audienceIcon(item),
+                              size: 12, color: AppColors.primary),
+                          const SizedBox(width: 4),
+                          Text(
+                            _audienceLabel(item),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primaryDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      FormatUtils.timeAgo(item.createdAt),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textGrey,
+                      ),
+                    ),
+                  ],
                 ),
-              );
-            },
-          ),
-        );
-      },
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

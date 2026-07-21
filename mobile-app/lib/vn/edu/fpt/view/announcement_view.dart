@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../common/app_colors.dart';
 import '../common/format_utils.dart';
+import '../common/list_load_state.dart';
 import '../controller/announcement_controller.dart';
 import '../model/announcement_model.dart';
 
@@ -8,7 +9,12 @@ import '../model/announcement_model.dart';
 /// [typeFilter]: null = tất cả; 'Global' = chỉ tin toàn trường (dùng cho GV).
 class AnnouncementTab extends StatefulWidget {
   final String? typeFilter;
-  const AnnouncementTab({super.key, this.typeFilter});
+  final bool isTabActive;
+  const AnnouncementTab({
+    super.key,
+    this.typeFilter,
+    this.isTabActive = true,
+  });
 
   @override
   State<AnnouncementTab> createState() => _AnnouncementTabState();
@@ -16,57 +22,62 @@ class AnnouncementTab extends StatefulWidget {
 
 class _AnnouncementTabState extends State<AnnouncementTab> {
   final AnnouncementController _controller = AnnouncementController();
-  late Future<(List<AnnouncementModel>?, String?)> _future;
+  final _state = ListLoadState<AnnouncementModel>();
 
   @override
   void initState() {
     super.initState();
-    _future = _controller.getList(type: widget.typeFilter);
+    _loadList();
   }
 
-  Future<void> _reload() async {
-    setState(() => _future = _controller.getList(type: widget.typeFilter));
-    await _future;
+  Future<void> _loadList() => reloadList(
+        setState: setState,
+        mounted: () => mounted,
+        state: _state,
+        fetch: () => _controller.getList(type: widget.typeFilter),
+      );
+
+  @override
+  void didUpdateWidget(covariant AnnouncementTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.isTabActive && widget.isTabActive) {
+      _loadList();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<(List<AnnouncementModel>?, String?)>(
-      future: _future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    if (_state.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-        final (list, error) = snapshot.data ?? (null, 'Không tải được dữ liệu.');
+    if (_state.error != null) {
+      return _ErrorRetry(message: _state.error!, onRetry: _loadList);
+    }
 
-        if (error != null) {
-          return _ErrorRetry(message: error, onRetry: _reload);
-        }
+    final list = _state.items;
 
-        if (list == null || list.isEmpty) {
-          return RefreshIndicator(
-            onRefresh: _reload,
-            child: ListView(
-              children: const [
-                SizedBox(height: 120),
-                Center(child: Text('Chưa có thông báo nào.')),
-              ],
-            ),
-          );
-        }
+    if (list == null || list.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _loadList,
+        child: ListView(
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('Chưa có thông báo nào.')),
+          ],
+        ),
+      );
+    }
 
-        return RefreshIndicator(
-          onRefresh: _reload,
-          child: ListView.separated(
-            padding: const EdgeInsets.all(12),
-            itemCount: list.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (context, index) =>
-                _AnnouncementCard(item: list[index]),
-          ),
-        );
-      },
+    return RefreshIndicator(
+      onRefresh: _loadList,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(12),
+        itemCount: list.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
+        itemBuilder: (context, index) =>
+            _AnnouncementCard(item: list[index]),
+      ),
     );
   }
 }

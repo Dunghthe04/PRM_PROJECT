@@ -4,6 +4,7 @@ import '../common/app_colors.dart';
 import '../common/app_config.dart';
 import '../common/format_utils.dart';
 import '../controller/file_controller.dart';
+import '../common/list_load_state.dart';
 import '../controller/leave_request_controller.dart';
 import '../model/leave_request_model.dart';
 import '../model/user_model.dart';
@@ -11,8 +12,8 @@ import '../service/parent_session.dart';
 
 /// Màn Đơn xin nghỉ (FR2.5) — full-screen, mở từ lối tắt Dashboard.
 ///
-/// - Học sinh: xem/tạo đơn cho chính mình.
-/// - Phụ huynh: xem/tạo đơn cho con đang chọn (ParentSession).
+/// - Học sinh: chỉ xem đơn của mình.
+/// - Phụ huynh: xem/tạo/hủy đơn cho con đang chọn (ParentSession).
 class LeaveRequestView extends StatefulWidget {
   final UserModel user;
   const LeaveRequestView({super.key, required this.user});
@@ -23,20 +24,22 @@ class LeaveRequestView extends StatefulWidget {
 
 class _LeaveRequestViewState extends State<LeaveRequestView> {
   final LeaveRequestController _controller = LeaveRequestController();
-  late Future<(List<LeaveRequestModel>?, String?)> _future;
+  final _state = ListLoadState<LeaveRequestModel>();
 
   bool get _isParent => widget.user.role == 'Parent';
 
   @override
   void initState() {
     super.initState();
-    _future = _controller.getMy();
+    _loadList();
   }
 
-  Future<void> _reload() async {
-    setState(() => _future = _controller.getMy());
-    await _future;
-  }
+  Future<void> _loadList() => reloadList(
+        setState: setState,
+        mounted: () => mounted,
+        state: _state,
+        fetch: () => _controller.getMy(),
+      );
 
   /// Con đang chọn (chỉ dùng cho PH). Null nếu HS hoặc chưa chọn con.
   UserModel? get _selectedChild =>
@@ -64,12 +67,12 @@ class _LeaveRequestViewState extends State<LeaveRequestView> {
       context,
       MaterialPageRoute(
         builder: (_) => _CreateLeaveRequestPage(
-          studentId: _selectedChild?.id, // null nếu là HS
-          studentName: _selectedChild?.fullName,
+          studentId: _selectedChild!.id,
+          studentName: _selectedChild!.fullName,
         ),
       ),
     );
-    if (created == true) _reload();
+    if (created == true) await _loadList();
   }
 
   @override
@@ -85,56 +88,51 @@ class _LeaveRequestViewState extends State<LeaveRequestView> {
               builder: (context, _, _) => _buildBody(),
             )
           : _buildBody(),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openCreate,
-        icon: const Icon(Icons.add),
-        label: const Text('Tạo đơn'),
-      ),
+      floatingActionButton: _isParent
+          ? FloatingActionButton.extended(
+              onPressed: _openCreate,
+              icon: const Icon(Icons.add),
+              label: const Text('Tạo đơn'),
+            )
+          : null,
     );
   }
 
   Widget _buildBody() {
-    return FutureBuilder<(List<LeaveRequestModel>?, String?)>(
-      future: _future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    if (_state.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-        final (list, error) = snapshot.data ?? (null, 'Không tải được dữ liệu.');
+    if (_state.error != null) {
+      return _CenteredRetry(message: _state.error!, onRetry: _loadList);
+    }
 
-        if (error != null) {
-          return _CenteredRetry(message: error, onRetry: _reload);
-        }
+    final filtered = _applyChildFilter(_state.items ?? []);
 
-        final filtered = _applyChildFilter(list ?? []);
+    if (filtered.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _loadList,
+        child: ListView(
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('Chưa có đơn xin nghỉ nào.')),
+          ],
+        ),
+      );
+    }
 
-        if (filtered.isEmpty) {
-          return RefreshIndicator(
-            onRefresh: _reload,
-            child: ListView(
-              children: const [
-                SizedBox(height: 120),
-                Center(child: Text('Chưa có đơn xin nghỉ nào.')),
-              ],
-            ),
-          );
-        }
-
-        return RefreshIndicator(
-          onRefresh: _reload,
-          child: ListView.separated(
-            padding: const EdgeInsets.all(12),
-            itemCount: filtered.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (context, index) => _LeaveCard(
-              item: filtered[index],
-              showStudent: _isParent,
-              onTap: _openDetail,
-            ),
-          ),
-        );
-      },
+    return RefreshIndicator(
+      onRefresh: _loadList,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(12),
+        itemCount: filtered.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
+        itemBuilder: (context, index) => _LeaveCard(
+          item: filtered[index],
+          showStudent: _isParent,
+          onTap: _openDetail,
+        ),
+      ),
     );
   }
 
@@ -142,9 +140,14 @@ class _LeaveRequestViewState extends State<LeaveRequestView> {
   Future<void> _openDetail(LeaveRequestModel item) async {
     final changed = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (_) => _LeaveDetailPage(item: item)),
+      MaterialPageRoute(
+        builder: (_) => _LeaveDetailPage(
+          item: item,
+          canCancel: _isParent,
+        ),
+      ),
     );
-    if (changed == true) _reload();
+    if (changed == true) await _loadList();
   }
 }
 
@@ -216,7 +219,8 @@ class _LeaveCard extends StatelessWidget {
 /// Trả về `true` qua Navigator.pop khi hủy thành công.
 class _LeaveDetailPage extends StatefulWidget {
   final LeaveRequestModel item;
-  const _LeaveDetailPage({required this.item});
+  final bool canCancel;
+  const _LeaveDetailPage({required this.item, required this.canCancel});
 
   @override
   State<_LeaveDetailPage> createState() => _LeaveDetailPageState();
@@ -318,8 +322,8 @@ class _LeaveDetailPageState extends State<_LeaveDetailPage> {
           ],
         ),
       ),
-      // Chỉ cho hủy khi đơn còn Chờ duyệt.
-      floatingActionButton: item.isPending
+      // Chỉ PH được hủy khi đơn còn Chờ duyệt.
+      floatingActionButton: widget.canCancel && item.isPending
           ? FloatingActionButton.extended(
               backgroundColor: AppColors.danger,
               onPressed: _cancelling ? null : _cancel,
@@ -352,11 +356,14 @@ class _LeaveDetailPageState extends State<_LeaveDetailPage> {
   }
 }
 
-/// Form tạo đơn xin nghỉ mới. Trả về `true` khi tạo thành công.
+/// Form tạo đơn xin nghỉ mới (chỉ PH). Trả về `true` khi tạo thành công.
 class _CreateLeaveRequestPage extends StatefulWidget {
-  final int? studentId; // null = HS tự tạo cho mình
-  final String? studentName; // để hiển thị khi PH tạo cho con
-  const _CreateLeaveRequestPage({this.studentId, this.studentName});
+  final int studentId;
+  final String studentName;
+  const _CreateLeaveRequestPage({
+    required this.studentId,
+    required this.studentName,
+  });
 
   @override
   State<_CreateLeaveRequestPage> createState() =>
@@ -461,18 +468,16 @@ class _CreateLeaveRequestPageState extends State<_CreateLeaveRequestPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Nếu PH tạo cho con → hiển thị tên con.
-            if (widget.studentName != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Text(
-                  'Học sinh: ${widget.studentName}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                'Học sinh: ${widget.studentName}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
                 ),
               ),
+            ),
 
             // Chọn ngày nghỉ.
             const Text('Ngày xin nghỉ',

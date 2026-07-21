@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../common/app_colors.dart';
 import '../common/app_config.dart';
 import '../common/format_utils.dart';
+import '../common/list_load_state.dart';
 import '../controller/leave_request_controller.dart';
 import '../model/leave_request_model.dart';
 
@@ -24,29 +25,27 @@ class _TeacherLeaveReviewPageState extends State<TeacherLeaveReviewPage> {
   final LeaveRequestController _controller = LeaveRequestController();
   /// null = tất cả; Pending / Approved / Rejected.
   String? _statusFilter = 'Pending';
-  late Future<(List<LeaveRequestModel>?, String?)> _future;
+  final _state = ListLoadState<LeaveRequestModel>();
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _loadList();
   }
 
-  Future<(List<LeaveRequestModel>?, String?)> _load() => _controller.getList(
-        classId: widget.classId,
-        status: _statusFilter,
+  Future<void> _loadList() => reloadList(
+        setState: setState,
+        mounted: () => mounted,
+        state: _state,
+        fetch: () => _controller.getList(
+          classId: widget.classId,
+          status: _statusFilter,
+        ),
       );
 
-  Future<void> _reload() async {
-    setState(() => _future = _load());
-    await _future;
-  }
-
   void _setFilter(String? status) {
-    setState(() {
-      _statusFilter = status;
-      _future = _load();
-    });
+    setState(() => _statusFilter = status);
+    _loadList();
   }
 
   Future<void> _approve(LeaveRequestModel item) async {
@@ -69,7 +68,7 @@ class _TeacherLeaveReviewPageState extends State<TeacherLeaveReviewPage> {
     final (success, msg) = await _controller.approve(item.id);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-    if (success) _reload();
+    if (success) await _loadList();
   }
 
   Future<void> _reject(LeaveRequestModel item) async {
@@ -112,7 +111,7 @@ class _TeacherLeaveReviewPageState extends State<TeacherLeaveReviewPage> {
     );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-    if (success) _reload();
+    if (success) await _loadList();
   }
 
   Color _statusColor(String status) {
@@ -146,53 +145,50 @@ class _TeacherLeaveReviewPageState extends State<TeacherLeaveReviewPage> {
               ],
             ),
           ),
-          Expanded(
-            child: FutureBuilder<(List<LeaveRequestModel>?, String?)>(
-              future: _future,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final (list, error) =
-                    snapshot.data ?? (null, 'Không tải được đơn.');
-                if (error != null) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(error, textAlign: TextAlign.center),
-                        const SizedBox(height: 12),
-                        ElevatedButton(
-                            onPressed: _reload, child: const Text('Thử lại')),
-                      ],
-                    ),
-                  );
-                }
-                final items = list ?? [];
-                if (items.isEmpty) {
-                  return RefreshIndicator(
-                    onRefresh: _reload,
-                    child: ListView(
-                      children: const [
-                        SizedBox(height: 120),
-                        Center(child: Text('Không có đơn nào.')),
-                      ],
-                    ),
-                  );
-                }
-                return RefreshIndicator(
-                  onRefresh: _reload,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(12),
-                    itemCount: items.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 8),
-                    itemBuilder: (context, i) => _buildCard(items[i]),
-                  ),
-                );
-              },
-            ),
-          ),
+          Expanded(child: _buildList()),
         ],
+      ),
+    );
+  }
+
+  Widget _buildList() {
+    if (_state.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_state.error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_state.error!, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: _loadList,
+              child: const Text('Thử lại'),
+            ),
+          ],
+        ),
+      );
+    }
+    final items = _state.items ?? [];
+    if (items.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _loadList,
+        child: ListView(
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('Không có đơn nào.')),
+          ],
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _loadList,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(12),
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
+        itemBuilder: (context, i) => _buildCard(items[i]),
       ),
     );
   }

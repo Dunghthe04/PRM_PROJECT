@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../common/app_colors.dart';
 import '../common/format_utils.dart';
+import '../common/list_load_state.dart';
 import '../controller/admin_catalog_controller.dart';
 import '../controller/admin_fee_controller.dart';
 
@@ -50,18 +51,20 @@ class _CategoriesTab extends StatefulWidget {
 
 class _CategoriesTabState extends State<_CategoriesTab> {
   final _c = AdminFeeController();
-  late Future<(List<FeeCategoryModel>?, String?)> _future;
+  final _state = ListLoadState<FeeCategoryModel>();
 
   @override
   void initState() {
     super.initState();
-    _future = _c.getCategories();
+    _loadList();
   }
 
-  Future<void> _reload() async {
-    setState(() => _future = _c.getCategories());
-    await _future;
-  }
+  Future<void> _loadList() => reloadList(
+        setState: setState,
+        mounted: () => mounted,
+        state: _state,
+        fetch: () => _c.getCategories(),
+      );
 
   Future<void> _openForm({FeeCategoryModel? edit}) async {
     final name = TextEditingController(text: edit?.name ?? '');
@@ -130,7 +133,7 @@ class _CategoriesTabState extends State<_CategoriesTab> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
       return;
     }
-    _reload();
+    _loadList();
   }
 
   @override
@@ -148,37 +151,32 @@ class _CategoriesTabState extends State<_CategoriesTab> {
             ),
           ),
         ),
-        Expanded(
-          child: FutureBuilder(
-            future: _future,
-            builder: (context, snap) {
-              if (snap.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final (list, err) = snap.data ?? (null, 'Lỗi');
-              if (err != null) return Center(child: Text(err));
-              final items = list ?? [];
-              return ListView.separated(
-                itemCount: items.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (_, i) {
-                  final c = items[i];
-                  return ListTile(
-                    title: Text(c.name,
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(
-                        '${c.amountLabel}${c.isActive ? "" : " • NGƯNG"}'),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: () => _openForm(edit: c),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
+        Expanded(child: _buildList()),
       ],
+    );
+  }
+
+  Widget _buildList() {
+    if (_state.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_state.error != null) return Center(child: Text(_state.error!));
+    final items = _state.items ?? [];
+    return ListView.separated(
+      itemCount: items.length,
+      separatorBuilder: (_, _) => const Divider(height: 1),
+      itemBuilder: (_, i) {
+        final c = items[i];
+        return ListTile(
+          title: Text(c.name,
+              style: const TextStyle(fontWeight: FontWeight.w600)),
+          subtitle: Text('${c.amountLabel}${c.isActive ? "" : " • NGƯNG"}'),
+          trailing: IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: () => _openForm(edit: c),
+          ),
+        );
+      },
     );
   }
 }
@@ -194,18 +192,20 @@ class _InvoicesTab extends StatefulWidget {
 class _InvoicesTabState extends State<_InvoicesTab> {
   final _fee = AdminFeeController();
   final _catalog = AdminCatalogController();
-  late Future<(List<AdminFeeInvoiceModel>?, String?)> _future;
+  final _state = ListLoadState<AdminFeeInvoiceModel>();
 
   @override
   void initState() {
     super.initState();
-    _future = _fee.getInvoices();
+    _loadList();
   }
 
-  Future<void> _reload() async {
-    setState(() => _future = _fee.getInvoices());
-    await _future;
-  }
+  Future<void> _loadList() => reloadList(
+        setState: setState,
+        mounted: () => mounted,
+        state: _state,
+        fetch: () => _fee.getInvoices(),
+      );
 
   Future<void> _batchCreate() async {
     final (classes, cErr) = await _catalog.getClasses();
@@ -300,7 +300,7 @@ class _InvoicesTabState extends State<_InvoicesTab> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Đã tạo $count hóa đơn.')),
     );
-    _reload();
+    _loadList();
   }
 
   @override
@@ -318,43 +318,39 @@ class _InvoicesTabState extends State<_InvoicesTab> {
             ),
           ),
         ),
-        Expanded(
-          child: FutureBuilder(
-            future: _future,
-            builder: (context, snap) {
-              if (snap.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final (list, err) = snap.data ?? (null, 'Lỗi');
-              if (err != null) return Center(child: Text(err));
-              final items = list ?? [];
-              if (items.isEmpty) {
-                return const Center(child: Text('Chưa có hóa đơn.'));
-              }
-              return ListView.separated(
-                itemCount: items.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (_, i) {
-                  final inv = items[i];
-                  return ListTile(
-                    title: Text('${inv.studentName} • ${inv.feeCategoryName}'),
-                    subtitle: Text(
-                      '${FormatUtils.currency(inv.amount)} • Hạn ${FormatUtils.date(inv.dueDate)}\n'
-                      '${inv.isPaid ? "ĐÃ TT" : inv.status}'
-                      '${inv.receiptNumber != null ? " • ${inv.receiptNumber}" : ""}',
-                    ),
-                    isThreeLine: true,
-                    trailing: Icon(
-                      inv.isPaid ? Icons.check_circle : Icons.schedule,
-                      color: inv.isPaid ? AppColors.success : Colors.orange,
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
+        Expanded(child: _buildList()),
       ],
+    );
+  }
+
+  Widget _buildList() {
+    if (_state.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_state.error != null) return Center(child: Text(_state.error!));
+    final items = _state.items ?? [];
+    if (items.isEmpty) {
+      return const Center(child: Text('Chưa có hóa đơn.'));
+    }
+    return ListView.separated(
+      itemCount: items.length,
+      separatorBuilder: (_, _) => const Divider(height: 1),
+      itemBuilder: (_, i) {
+        final inv = items[i];
+        return ListTile(
+          title: Text('${inv.studentName} • ${inv.feeCategoryName}'),
+          subtitle: Text(
+            '${FormatUtils.currency(inv.amount)} • Hạn ${FormatUtils.date(inv.dueDate)}\n'
+            '${inv.isPaid ? "ĐÃ TT" : inv.status}'
+            '${inv.receiptNumber != null ? " • ${inv.receiptNumber}" : ""}',
+          ),
+          isThreeLine: true,
+          trailing: Icon(
+            inv.isPaid ? Icons.check_circle : Icons.schedule,
+            color: inv.isPaid ? AppColors.success : Colors.orange,
+          ),
+        );
+      },
     );
   }
 }
@@ -369,18 +365,20 @@ class _GatewayTab extends StatefulWidget {
 
 class _GatewayTabState extends State<_GatewayTab> {
   final _c = AdminFeeController();
-  late Future<(List<PaymentGatewayConfigModel>?, String?)> _future;
+  final _state = ListLoadState<PaymentGatewayConfigModel>();
 
   @override
   void initState() {
     super.initState();
-    _future = _c.getPaymentConfigs();
+    _loadList();
   }
 
-  Future<void> _reload() async {
-    setState(() => _future = _c.getPaymentConfigs());
-    await _future;
-  }
+  Future<void> _loadList() => reloadList(
+        setState: setState,
+        mounted: () => mounted,
+        state: _state,
+        fetch: () => _c.getPaymentConfigs(),
+      );
 
   Future<void> _editPayOs(PaymentGatewayConfigModel? existing) async {
     final cfg = existing?.parseConfig() ?? {};
@@ -452,7 +450,7 @@ class _GatewayTabState extends State<_GatewayTab> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(err ?? 'Đã lưu cấu hình PayOS.')),
     );
-    if (err == null) _reload();
+    if (err == null) _loadList();
   }
 
   Future<void> _editVnPay(PaymentGatewayConfigModel? existing) async {
@@ -515,7 +513,7 @@ class _GatewayTabState extends State<_GatewayTab> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(err ?? 'Đã lưu cấu hình VNPay.')),
     );
-    if (err == null) _reload();
+    if (err == null) _loadList();
   }
 
   Widget _field(TextEditingController c, String label) => Padding(
@@ -531,61 +529,55 @@ class _GatewayTabState extends State<_GatewayTab> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: _future,
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final (list, err) = snap.data ?? (null, 'Lỗi');
-        if (err != null) return Center(child: Text(err));
-        final items = list ?? [];
-        PaymentGatewayConfigModel? payos;
-        PaymentGatewayConfigModel? vnpay;
-        for (final c in items) {
-          if (c.provider.toLowerCase() == 'payos') payos = c;
-          if (c.provider.toLowerCase() == 'vnpay') vnpay = c;
-        }
-        return ListView(
-          padding: const EdgeInsets.all(12),
-          children: [
-            Card(
-              child: ListTile(
-                leading: Icon(Icons.qr_code,
-                    color: payos?.isEnabled == true
-                        ? AppColors.success
-                        : AppColors.textGrey),
-                title: const Text('PayOS',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(payos == null
-                    ? 'Chưa cấu hình'
-                    : (payos.isEnabled ? 'Đang bật' : 'Đang tắt')),
-                trailing: ElevatedButton(
-                  onPressed: () => _editPayOs(payos),
-                  child: const Text('Cấu hình'),
-                ),
-              ),
+    if (_state.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_state.error != null) return Center(child: Text(_state.error!));
+    final items = _state.items ?? [];
+    PaymentGatewayConfigModel? payos;
+    PaymentGatewayConfigModel? vnpay;
+    for (final c in items) {
+      if (c.provider.toLowerCase() == 'payos') payos = c;
+      if (c.provider.toLowerCase() == 'vnpay') vnpay = c;
+    }
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        Card(
+          child: ListTile(
+            leading: Icon(Icons.qr_code,
+                color: payos?.isEnabled == true
+                    ? AppColors.success
+                    : AppColors.textGrey),
+            title: const Text('PayOS',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(payos == null
+                ? 'Chưa cấu hình'
+                : (payos.isEnabled ? 'Đang bật' : 'Đang tắt')),
+            trailing: ElevatedButton(
+              onPressed: () => _editPayOs(payos),
+              child: const Text('Cấu hình'),
             ),
-            Card(
-              child: ListTile(
-                leading: Icon(Icons.account_balance,
-                    color: vnpay?.isEnabled == true
-                        ? AppColors.success
-                        : AppColors.textGrey),
-                title: const Text('VNPay',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(vnpay == null
-                    ? 'Chưa cấu hình'
-                    : (vnpay.isEnabled ? 'Đang bật' : 'Đang tắt')),
-                trailing: ElevatedButton(
-                  onPressed: () => _editVnPay(vnpay),
-                  child: const Text('Cấu hình'),
-                ),
-              ),
+          ),
+        ),
+        Card(
+          child: ListTile(
+            leading: Icon(Icons.account_balance,
+                color: vnpay?.isEnabled == true
+                    ? AppColors.success
+                    : AppColors.textGrey),
+            title: const Text('VNPay',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(vnpay == null
+                ? 'Chưa cấu hình'
+                : (vnpay.isEnabled ? 'Đang bật' : 'Đang tắt')),
+            trailing: ElevatedButton(
+              onPressed: () => _editVnPay(vnpay),
+              child: const Text('Cấu hình'),
             ),
-          ],
-        );
-      },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -600,57 +592,55 @@ class _HistoryTab extends StatefulWidget {
 
 class _HistoryTabState extends State<_HistoryTab> {
   final _c = AdminFeeController();
-  late Future<(List<AdminPaymentTxnModel>?, String?)> _future;
+  final _state = ListLoadState<AdminPaymentTxnModel>();
 
   @override
   void initState() {
     super.initState();
-    _future = _c.getPaymentHistory();
+    _loadList();
   }
+
+  Future<void> _loadList() => reloadList(
+        setState: setState,
+        mounted: () => mounted,
+        state: _state,
+        fetch: () => _c.getPaymentHistory(),
+      );
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: _future,
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final (list, err) = snap.data ?? (null, 'Lỗi');
-        if (err != null) return Center(child: Text(err));
-        final items = list ?? [];
-        if (items.isEmpty) {
-          return const Center(child: Text('Chưa có giao dịch.'));
-        }
-        return RefreshIndicator(
-          onRefresh: () async {
-            setState(() => _future = _c.getPaymentHistory());
-            await _future;
-          },
-          child: ListView.separated(
-            itemCount: items.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (_, i) {
-              final t = items[i];
-              return ListTile(
-                title: Text('${t.provider} • ${t.orderCode}'),
-                subtitle: Text(
-                    'HĐ #${t.feeInvoiceId} • ${FormatUtils.dateTime(t.createdAt)}'),
-                trailing: Text(
-                  '${FormatUtils.currency(t.amount)}\n${t.status}',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    color: t.status.toLowerCase() == 'paid'
-                        ? AppColors.success
-                        : AppColors.textDark,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
+    if (_state.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_state.error != null) return Center(child: Text(_state.error!));
+    final items = _state.items ?? [];
+    if (items.isEmpty) {
+      return const Center(child: Text('Chưa có giao dịch.'));
+    }
+    return RefreshIndicator(
+      onRefresh: _loadList,
+      child: ListView.separated(
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const Divider(height: 1),
+        itemBuilder: (_, i) {
+          final t = items[i];
+          return ListTile(
+            title: Text('${t.provider} • ${t.orderCode}'),
+            subtitle: Text(
+                'HĐ #${t.feeInvoiceId} • ${FormatUtils.dateTime(t.createdAt)}'),
+            trailing: Text(
+              '${FormatUtils.currency(t.amount)}\n${t.status}',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: t.status.toLowerCase() == 'paid'
+                    ? AppColors.success
+                    : AppColors.textDark,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

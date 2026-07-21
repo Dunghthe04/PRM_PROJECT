@@ -646,17 +646,43 @@ class _PaymentQrPageState extends State<_PaymentQrPage> {
               border:
                   Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
             ),
-            child: QrImageView(
-              data: qrData,
-              version: QrVersions.auto,
-              size: 220,
-            ),
+            child: isRealQr
+                ? QrImageView(
+                    data: qrData,
+                    version: QrVersions.auto,
+                    size: 220,
+                  )
+                : SizedBox(
+                    width: 220,
+                    height: 220,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.qr_code_2,
+                            size: 72,
+                            color: AppColors.textGrey.withValues(alpha: 0.5)),
+                        const SizedBox(height: 12),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8),
+                          child: Text(
+                            'Chưa có mã VietQR\n(PayOS chưa cấu hình)',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppColors.textGrey,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
           ),
           const SizedBox(height: 12),
           Text(
             isRealQr
-                ? 'Mở app ngân hàng, quét mã QR để thanh toán.'
-                : '(Dev) Chưa cấu hình PayOS thật — dùng nút "Giả lập đã đóng" để test.',
+                ? 'Mở app ngân hàng, quét mã QR VietQR (NAPAS) để thanh toán.'
+                : 'Cấu hình ClientId, ApiKey, ChecksumKey PayOS trong Admin '
+                    '→ Tài chính → Cổng PayOS, rồi restart backend.',
             textAlign: TextAlign.center,
             style: const TextStyle(color: AppColors.textDark, fontSize: 14),
           ),
@@ -674,15 +700,17 @@ class _PaymentQrPageState extends State<_PaymentQrPage> {
                   style: TextStyle(color: AppColors.textDark)),
             ],
           ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _openGateway,
-              icon: const Icon(Icons.open_in_new),
-              label: const Text('Mở cổng thanh toán'),
+          if (isRealQr) ...[
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _openGateway,
+                icon: const Icon(Icons.open_in_new),
+                label: const Text('Mở cổng thanh toán'),
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,

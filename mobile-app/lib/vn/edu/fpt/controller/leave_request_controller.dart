@@ -3,6 +3,7 @@ import '../model/leave_request_model.dart';
 import '../service/api_client.dart';
 
 /// Controller nghiệp vụ Đơn xin nghỉ (FR2.5) cho HS/PH.
+/// Chỉ PH được tạo/hủy đơn; HS chỉ xem.
 /// Quy ước trả về: record (dữ liệu, lỗi) — chỉ 1 trong 2 khác null.
 class LeaveRequestController {
   final ApiClient _apiClient = ApiClient();
@@ -33,7 +34,7 @@ class LeaveRequestController {
   /// Nhận:
   ///   - [date]: ngày xin nghỉ (không được là ngày đã qua).
   ///   - [reason]: lý do (bắt buộc).
-  ///   - [studentId]: (chỉ PH) id con cần xin nghỉ; HS bỏ trống.
+  ///   - [studentId]: (bắt buộc với PH) id con cần xin nghỉ.
   ///   - [medicalCertificateUrl]: URL ảnh y tế đã upload (tùy chọn).
   /// Trả về `(LeaveRequestModel?, String?)`:
   ///   - (đơn vừa tạo, null) nếu thành công.

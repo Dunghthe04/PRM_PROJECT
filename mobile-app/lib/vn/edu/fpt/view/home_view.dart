@@ -121,7 +121,7 @@ class _MainShellState extends State<_MainShell> {
   /// Chuyển sang tab có id cho trước (Dashboard nhờ điều hướng).
   /// Nhận: [id] — id tab đích (vd 'notifications', 'announcements').
   void _goToTabId(String id) {
-    final tabs = _buildTabs(widget.user, _refreshUnread, _goToTabId);
+    final tabs = _tabDefs(widget.user);
     final idx = tabs.indexWhere((t) => t.id == id);
     if (idx >= 0) setState(() => _currentIndex = idx);
     _refreshUnread();
@@ -129,9 +129,7 @@ class _MainShellState extends State<_MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    // Lấy danh sách tab theo vai trò; truyền callback để tab Thông báo
-    // báo lại khi số chưa đọc thay đổi, và callback điều hướng cho Dashboard.
-    final tabs = _buildTabs(widget.user, _refreshUnread, _goToTabId);
+    final tabs = _tabDefs(widget.user);
 
     return Scaffold(
       appBar: AppBar(
@@ -144,7 +142,16 @@ class _MainShellState extends State<_MainShell> {
       // IndexedStack: giữ nguyên trạng thái mọi tab, chỉ hiện tab đang chọn.
       body: IndexedStack(
         index: _currentIndex,
-        children: tabs.map((t) => t.body).toList(),
+        children: [
+          for (var i = 0; i < tabs.length; i++)
+            _buildTabBody(
+              tabs[i],
+              widget.user,
+              _refreshUnread,
+              _goToTabId,
+              _currentIndex == i,
+            ),
+        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -169,82 +176,92 @@ class _MainShellState extends State<_MainShell> {
   }
 }
 
-/// _TabItem: mô tả 1 tab (icon + nhãn + nội dung + id nhận diện).
+/// _TabItem: mô tả 1 tab (icon + nhãn + id nhận diện).
 class _TabItem {
   final IconData icon;
   final String label;
-  final Widget body;
-  final String? id; // dùng để nhận diện tab đặc biệt (vd 'notifications')
-  _TabItem({required this.icon, required this.label, required this.body, this.id});
+  final String id;
+  _TabItem({required this.icon, required this.label, required this.id});
 }
 
-/// Trả về danh sách tab tùy theo vai trò user.
-///
-/// Nhận:
-///   - [user]: user đang đăng nhập (quyết định bộ tab).
-///   - [onUnreadChanged]: callback để tab Thông báo báo cập nhật badge.
-///   - [onNavigateTab]: callback để Dashboard nhờ chuyển sang tab khác.
-List<_TabItem> _buildTabs(
-  UserModel user,
-  VoidCallback onUnreadChanged,
-  void Function(String tabId) onNavigateTab,
-) {
-  final home = _TabItem(
-      id: 'home',
-      icon: Icons.home,
-      label: 'Trang chủ',
-      body: DashboardTab(user: user, onNavigateTab: onNavigateTab));
+/// Trả về metadata tab theo vai trò (không gắn body — build động kèm isTabActive).
+List<_TabItem> _tabDefs(UserModel user) {
+  final home = _TabItem(id: 'home', icon: Icons.home, label: 'Trang chủ');
   final noti = _TabItem(
-      id: 'notifications',
-      icon: Icons.notifications,
-      label: 'Thông báo',
-      body: NotificationTab(
-        onUnreadChanged: onUnreadChanged,
-        showSentHistory: user.role == 'Teacher',
-      ));
-  final profile = _TabItem(
-      id: 'profile',
-      icon: Icons.person,
-      label: 'Hồ sơ',
-      body: _ProfileTab(user: user));
+      id: 'notifications', icon: Icons.notifications, label: 'Thông báo');
+  final profile =
+      _TabItem(id: 'profile', icon: Icons.person, label: 'Hồ sơ');
 
   switch (user.role) {
     case 'Teacher':
       return [
         home,
-        _TabItem(id: 'class', icon: Icons.calendar_month, label: 'Lịch dạy', body: TeacherClassTab(user: user)),
-        // Bảng tin GV: chỉ tin toàn trường từ Admin.
         _TabItem(
-          id: 'announcements',
-          icon: Icons.article,
-          label: 'Bảng tin',
-          body: const AnnouncementTab(typeFilter: 'Global'),
-        ),
+            id: 'class',
+            icon: Icons.calendar_month,
+            label: 'Lịch dạy'),
+        _TabItem(
+            id: 'announcements', icon: Icons.article, label: 'Bảng tin'),
         noti,
         profile,
       ];
     case 'Admin':
       return [
         home,
-        _TabItem(id: 'manage', icon: Icons.manage_accounts, label: 'Quản lý', body: const _Placeholder(title: 'Quản lý')),
-        _TabItem(id: 'report', icon: Icons.bar_chart, label: 'Báo cáo', body: const _Placeholder(title: 'Báo cáo')),
+        _TabItem(
+            id: 'manage',
+            icon: Icons.manage_accounts,
+            label: 'Quản lý'),
+        _TabItem(id: 'report', icon: Icons.bar_chart, label: 'Báo cáo'),
         profile,
       ];
-    default: // Parent, Student
+    default:
       return [
         home,
-        _TabItem(id: 'study', icon: Icons.school, label: 'Học tập', body: StudyTab(user: user)),
-        // Bảng tin HS/PH: chỉ tin toàn trường (nhà trường).
-        // Tin GV gửi lớp → chuông Thông báo (Đã nhận).
+        _TabItem(id: 'study', icon: Icons.school, label: 'Học tập'),
         _TabItem(
-          id: 'announcements',
-          icon: Icons.article,
-          label: 'Bảng tin',
-          body: const AnnouncementTab(typeFilter: 'Global'),
-        ),
+            id: 'announcements', icon: Icons.article, label: 'Bảng tin'),
         noti,
         profile,
       ];
+  }
+}
+
+/// Dựng nội dung tab; [isActive] = tab đang hiển thị → tự tải lại danh sách.
+Widget _buildTabBody(
+  _TabItem tab,
+  UserModel user,
+  VoidCallback onUnreadChanged,
+  void Function(String tabId) onNavigateTab,
+  bool isActive,
+) {
+  switch (tab.id) {
+    case 'home':
+      return DashboardTab(
+        user: user,
+        onNavigateTab: onNavigateTab,
+        isTabActive: isActive,
+      );
+    case 'notifications':
+      return NotificationTab(
+        onUnreadChanged: onUnreadChanged,
+        showSentHistory: user.role == 'Teacher',
+        isTabActive: isActive,
+      );
+    case 'announcements':
+      return AnnouncementTab(typeFilter: 'Global', isTabActive: isActive);
+    case 'study':
+      return StudyTab(user: user);
+    case 'class':
+      return TeacherClassTab(user: user);
+    case 'profile':
+      return _ProfileTab(user: user);
+    case 'manage':
+      return const _Placeholder(title: 'Quản lý');
+    case 'report':
+      return const _Placeholder(title: 'Báo cáo');
+    default:
+      return const SizedBox.shrink();
   }
 }
 

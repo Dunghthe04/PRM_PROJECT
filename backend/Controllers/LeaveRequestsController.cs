@@ -9,7 +9,7 @@ namespace Api.Controllers;
 
 /// <summary>
 /// API đơn xin nghỉ (FR2.5, FR3.3 — Ngày 9 Bước 5).
-/// HS/PH: tạo, xem, hủy đơn Pending.
+/// HS: xem đơn. PH: tạo, xem, hủy đơn Pending.
 /// GV: xem DS, duyệt/từ chối → thông báo in-app.
 /// </summary>
 [ApiController]
@@ -66,7 +66,7 @@ public class LeaveRequestsController : ControllerBase
 
     /// <summary>POST /api/leave-requests — tạo đơn (đính kèm URL ảnh y tế).</summary>
     [HttpPost]
-    [Authorize(Roles = "Student,Parent")]
+    [Authorize(Roles = "Parent")]
     public async Task<IActionResult> Create([FromBody] CreateLeaveRequestDto dto)
     {
         var actorId = GetCurrentUserId();
@@ -116,7 +116,7 @@ public class LeaveRequestsController : ControllerBase
 
     /// <summary>DELETE /api/leave-requests/{id} — hủy đơn khi còn Pending.</summary>
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = "Student,Parent")]
+    [Authorize(Roles = "Parent")]
     public async Task<IActionResult> Cancel(int id)
     {
         var actorId = GetCurrentUserId();

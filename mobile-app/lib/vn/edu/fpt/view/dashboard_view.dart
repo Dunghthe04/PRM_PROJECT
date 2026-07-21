@@ -18,10 +18,12 @@ import 'teacher_class_picker_view.dart';
 class DashboardTab extends StatefulWidget {
   final UserModel user;
   final void Function(String tabId) onNavigateTab;
+  final bool isTabActive;
   const DashboardTab({
     super.key,
     required this.user,
     required this.onNavigateTab,
+    this.isTabActive = true,
   });
 
   @override
@@ -60,6 +62,14 @@ class _DashboardTabState extends State<DashboardTab> {
       _unread = unread;
       _loading = false;
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant DashboardTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.isTabActive && widget.isTabActive) {
+      _load();
+    }
   }
 
   @override
@@ -217,23 +227,26 @@ class _DashboardTabState extends State<DashboardTab> {
               icon: Icons.event_busy,
               label: 'Đơn xin nghỉ',
               // Màn full-screen (không phải tab) → dùng Navigator.push.
-              onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => LeaveRequestView(user: widget.user),
-                    ),
+              onTap: () => _pushAndRefresh(
+                    LeaveRequestView(user: widget.user),
                   )),
           _ActionCard(
               icon: Icons.payments,
               label: 'Học phí',
-              onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => FeeView(user: widget.user),
-                    ),
+              onTap: () => _pushAndRefresh(
+                    FeeView(user: widget.user),
                   )),
         ];
     }
+  }
+
+  /// Mở màn con rồi tải lại dashboard khi quay về.
+  Future<void> _pushAndRefresh(Widget page) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => page),
+    );
+    if (mounted) _load();
   }
 
   /// Chức năng chưa làm (sẽ hoàn thiện Ngày 15–20).
